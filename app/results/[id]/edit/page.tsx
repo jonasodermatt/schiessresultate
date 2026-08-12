@@ -4,6 +4,7 @@ import Link from "next/link";
 import { FormEvent, useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { supabase } from "../../../../lib/supabase";
+import Target from "../../../../components/Target";
 
 type Equipment = {
   id: string;
@@ -13,6 +14,8 @@ type Shot = {
   id: string;
   shot_number: number;
   score: number;
+  x_position: number | null;
+  y_position: number | null;
 };
 
 export default function EditResultPage() {
@@ -31,6 +34,7 @@ export default function EditResultPage() {
 
   const [shots, setShots] = useState<Shot[]>([]);
   const [inputType, setInputType] = useState("");
+  const [editingShotIndex, setEditingShotIndex] = useState<number | null>(null);
 
   useEffect(() => {
     async function loadData() {
@@ -71,7 +75,13 @@ export default function EditResultPage() {
       const { data: resultData, error: resultError } =
         await supabase
           .from("results")
-          .select(`id, date, discipline, equipment_id, notes, input_type, result_shots (id, shot_number, score)`)
+          .select(`id, date, discipline, equipment_id, notes, input_type, result_shots (
+  id,
+  shot_number,
+  score,
+  x_position,
+  y_position
+)`)
           .eq("id", id)
           .single();
 
@@ -96,6 +106,14 @@ const loadedShots = [...(resultData.result_shots ?? [])]
     id: shot.id,
     shot_number: shot.shot_number,
     score: Number(shot.score),
+    x_position:
+      shot.x_position !== null
+        ? Number(shot.x_position)
+        : null,
+    y_position:
+      shot.y_position !== null
+        ? Number(shot.y_position)
+        : null,
   }));
 
 setShots(loadedShots);
@@ -117,7 +135,12 @@ setShots(loadedShots);
   setShots((current) =>
     current.map((shot, shotIndex) =>
       shotIndex === index
-        ? { ...shot, score }
+        ? {
+            ...shot,
+            score,
+            x_position: null,
+            y_position: null,
+          }
         : shot
     )
   );
@@ -193,8 +216,10 @@ if (inputType === "individual") {
     const { error: shotError } = await supabase
       .from("result_shots")
       .update({
-        score: shot.score,
-      })
+  score: shot.score,
+  x_position: shot.x_position,
+  y_position: shot.y_position,
+})
       .eq("id", shot.id);
 
     if (shotError) {
@@ -332,44 +357,109 @@ router.push(`/results/${id}`);
               ))}
             </select>
           </div>
-          {inputType === "individual" && shots.length > 0 && (
+         
+  {inputType === "individual" && shots.length > 0 && (
   <div className="mt-7 border-t pt-6">
     <h2 className="text-lg font-bold text-slate-900">
       Einzelschüsse bearbeiten
     </h2>
 
     <p className="mt-1 text-sm text-slate-500">
-      Klicke auf einen Wert, um einen falsch erfassten
-      Schuss zu korrigieren.
+      Korrigiere den Wert oder die Position eines Schusses.
     </p>
 
-    <div className="mt-5 grid gap-4 sm:grid-cols-2">
+    <div className="mt-5 grid gap-4">
       {shots.map((shot, index) => (
         <div
           key={shot.id}
-          className="flex items-center justify-between rounded-xl bg-slate-50 p-4"
+          className="rounded-xl bg-slate-50 p-4"
         >
-          <label
-            htmlFor={`shot-${shot.id}`}
-            className="font-medium text-slate-700"
-          >
-            Schuss {shot.shot_number}
-          </label>
+          <div className="flex items-center justify-between gap-4">
+            <label
+              htmlFor={`shot-${shot.id}`}
+              className="font-medium text-slate-700"
+            >
+              Schuss {shot.shot_number}
+            </label>
 
-          <select
-            id={`shot-${shot.id}`}
-            value={shot.score}
-            onChange={(event) =>
-              changeShot(index, Number(event.target.value))
-            }
-            className="rounded-lg border border-slate-300 bg-white px-4 py-2 font-bold text-slate-900"
-          >
-            {Array.from({ length: 11 }, (_, score) => (
-              <option key={score} value={score}>
-                {score}
-              </option>
-            ))}
-          </select>
+            <select
+              id={`shot-${shot.id}`}
+              value={shot.score}
+              onChange={(event) =>
+                changeShot(index, Number(event.target.value))
+              }
+              className="rounded-lg border border-slate-300 bg-white px-4 py-2 font-bold text-slate-900"
+            >
+              {Array.from({ length: 11 }, (_, score) => (
+                <option key={score} value={score}>
+                  {score}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div className="mt-3 flex items-center justify-between gap-4">
+            <div className="text-sm text-slate-500">
+              {shot.x_position !== null &&
+              shot.y_position !== null
+                ? "Position vorhanden"
+                : "Keine Position gespeichert"}
+            </div>
+
+            <button
+              type="button"
+              onClick={() =>
+                setEditingShotIndex(
+                  editingShotIndex === index ? null : index
+                )
+              }
+              className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700"
+            >
+              {editingShotIndex === index
+                ? "Position schließen"
+                : "Position bearbeiten"}
+            </button>
+          </div>
+
+          {editingShotIndex === index && (
+            <div className="mt-5 border-t pt-5">
+              <h3 className="font-bold text-slate-900">
+                Position für Schuss {shot.shot_number}
+              </h3>
+
+              <p className="mt-2 text-sm text-slate-500">
+                Aktueller Wert: {shot.score}
+              </p>
+
+              <p className="mt-1 text-sm text-slate-500">
+                {shot.x_position !== null &&
+                shot.y_position !== null
+                  ? `x: ${shot.x_position} · y: ${shot.y_position}`
+                  : "Für diesen Schuss ist noch keine Position gespeichert."}
+              </p>
+
+              <Target
+                selectedX={shot.x_position}
+                selectedY={shot.y_position}
+                selectedScore={shot.score}
+                onSelect={(x, y, score) => {
+                  setShots((current) =>
+                    current.map(
+                      (currentShot, shotIndex) =>
+                        shotIndex === index
+                          ? {
+                              ...currentShot,
+                              score,
+                              x_position: x,
+                              y_position: y,
+                            }
+                          : currentShot
+                    )
+                  );
+                }}
+              />
+            </div>
+          )}
         </div>
       ))}
     </div>

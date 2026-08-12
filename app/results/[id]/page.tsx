@@ -9,6 +9,8 @@ type Shot = {
   id: string;
   shot_number: number;
   score: number;
+  x_position: number | null;
+  y_position: number | null;
 };
 
 type Equipment = {
@@ -79,10 +81,12 @@ export default function ResultDetailPage() {
             model
           ),
           result_shots (
-            id,
-            shot_number,
-            score
-          )
+  id,
+  shot_number,
+  score,
+  x_position,
+  y_position
+)
         `)
         .eq("id", id)
         .single();
@@ -323,7 +327,137 @@ export default function ResultDetailPage() {
               </div>
             </section>
           )}
+          {result.input_type === "individual" &&
+  shots.some(
+    (shot) =>
+      shot.x_position !== null &&
+      shot.y_position !== null
+  ) && (
+    <section className="mt-6 rounded-2xl border bg-white p-6">
+      <div>
+        <h2 className="text-lg font-bold text-slate-900">
+          Schussbild
+        </h2>
 
+        <p className="mt-1 text-sm text-slate-500">
+          Positionen der erfassten Einzelschüsse
+        </p>
+      </div>
+
+      <div
+        style={{
+          position: "relative",
+          width: "300px",
+          height: "300px",
+          maxWidth: "100%",
+          margin: "30px auto 10px",
+          border: "4px solid black",
+          borderRadius: "50%",
+          backgroundColor: "white",
+          overflow: "hidden",
+        }}
+      >
+        <div
+          style={{
+            position: "absolute",
+            inset: "10%",
+            border: "1px solid #94a3b8",
+            borderRadius: "50%",
+          }}
+        />
+
+        <div
+          style={{
+            position: "absolute",
+            inset: "20%",
+            border: "1px solid #94a3b8",
+            borderRadius: "50%",
+          }}
+        />
+
+        <div
+          style={{
+            position: "absolute",
+            inset: "30%",
+            border: "1px solid #94a3b8",
+            borderRadius: "50%",
+          }}
+        />
+
+        <div
+          style={{
+            position: "absolute",
+            inset: "40%",
+            border: "1px solid #94a3b8",
+            borderRadius: "50%",
+          }}
+        />
+
+        <div
+          style={{
+            position: "absolute",
+            left: "50%",
+            top: 0,
+            width: "1px",
+            height: "100%",
+            backgroundColor: "#e2e8f0",
+          }}
+        />
+
+        <div
+          style={{
+            position: "absolute",
+            left: 0,
+            top: "50%",
+            width: "100%",
+            height: "1px",
+            backgroundColor: "#e2e8f0",
+          }}
+        />
+
+        {shots
+          .filter(
+            (shot) =>
+              shot.x_position !== null &&
+              shot.y_position !== null
+          )
+          .map((shot) => (
+            <div
+              key={shot.id}
+              title={`Schuss ${shot.shot_number}: ${shot.score}`}
+              style={{
+                position: "absolute",
+                left: `${
+                  ((Number(shot.x_position) + 1) / 2) * 100
+                }%`,
+                top: `${
+                  ((1 - Number(shot.y_position)) / 2) * 100
+                }%`,
+                width: "24px",
+                height: "24px",
+                transform: "translate(-50%, -50%)",
+                borderRadius: "50%",
+                backgroundColor: "#dc2626",
+                border: "2px solid white",
+                color: "white",
+                fontSize: "11px",
+                fontWeight: "bold",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                zIndex: 10,
+              }}
+            >
+              {shot.shot_number}
+            </div>
+          ))}
+      </div>
+
+      <p className="mt-4 text-center text-xs text-slate-500">
+        Die Zahl im Treffer entspricht der Schussnummer.
+      </p>
+    </section>
+  )}
         {result.notes && (
           <section className="mt-6 rounded-2xl border bg-white p-6">
             <h2 className="text-lg font-bold text-slate-900">

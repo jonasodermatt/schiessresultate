@@ -4,10 +4,17 @@ import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "../../../lib/supabase";
+import Target from "@/components/Target";
 
 type Equipment = {
   id: string;
   name: string;
+};
+
+type Shot = {
+  score: number;
+  x: number | null;
+  y: number | null;
 };
 
 export default function NewResultPage() {
@@ -21,12 +28,16 @@ export default function NewResultPage() {
   );
   const [shotMode, setShotMode] = useState<"fixed" | "free">("fixed");
   const [plannedShots, setPlannedShots] = useState(10);
-  const [shots, setShots] = useState<number[]>([]);
+  const [shots, setShots] = useState<Shot[]>([]);
+  const [selectedX, setSelectedX] = useState<number | null>(null);
+  const [selectedY, setSelectedY] = useState<number | null>(null);
+  const [selectedScore, setSelectedScore] = useState<number | null>(null);
   const [totalOnlyScore, setTotalOnlyScore] = useState("");
   const [totalOnlyShots, setTotalOnlyShots] = useState(10);
   const [notes, setNotes] = useState("");
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState("");
+  const [showManualInput, setShowManualInput] = useState(false);
 
   useEffect(() => {
     async function loadEquipment() {
@@ -60,25 +71,120 @@ export default function NewResultPage() {
     loadEquipment();
   }, [router]);
 
-  const totalScore = useMemo(
-    () => shots.reduce((sum, shot) => sum + shot, 0),
-    [shots]
-  );
+const totalScore = useMemo(
+  () => shots.reduce((sum, shot) => sum + shot.score, 0),
+  [shots]
+);
 
   const averageScore =
     shots.length > 0 ? totalScore / shots.length : 0;
 
-  function addShot(score: number) {
-    if (
-      shotMode === "fixed" &&
-      shots.length >= plannedShots
-    ) {
-      return;
-    }
-
-    setShots((current) => [...current, score]);
+  function addShot(
+  score: number,
+  x: number | null,
+  y: number | null
+) {
+  if (
+    shotMode === "fixed" &&
+    shots.length >= plannedShots
+  ) {
+    return;
   }
 
+  setShots((current) => [
+    ...current,
+    {
+      score,
+      x,
+      y,
+    },
+  ]);
+
+  setSelectedX(null);
+  setSelectedY(null);
+  setSelectedScore(null);
+}
+function handleTargetClick(
+  event: React.MouseEvent<HTMLDivElement>
+) {
+  const rect = event.currentTarget.getBoundingClientRect();
+
+  const mouseX = event.clientX - rect.left;
+  const mouseY = event.clientY - rect.top;
+
+  const x = (mouseX / rect.width) * 2 - 1;
+  const y = -((mouseY / rect.height) * 2 - 1);
+
+  const distance = Math.sqrt(x * x + y * y);
+
+ let score = 0;
+
+if (distance <= 0.09) score = 10;
+else if (distance <= 0.18) score = 9;
+else if (distance <= 0.27) score = 8;
+else if (distance <= 0.36) score = 7;
+else if (distance <= 0.45) score = 6;
+else if (distance <= 0.54) score = 5;
+else if (distance <= 0.63) score = 4;
+else if (distance <= 0.72) score = 3;
+else if (distance <= 0.81) score = 2;
+else if (distance <= 0.90) score = 1;
+else score = 0;
+
+  setSelectedX(Number(x.toFixed(3)));
+  setSelectedY(Number(y.toFixed(3)));
+  setSelectedScore(score);
+}
+function getPositionLabel(
+  x: number,
+  y: number
+) {
+  const distance = Math.sqrt(x * x + y * y);
+
+  // 100 Punkte = exakt im Zentrum
+  // 90 Punkte = äußerer Rand des 10er-Bereichs
+  const score100 = Math.max(
+    0,
+    Math.min(100, 100 - distance * 100)
+  );
+
+  // Nur 96 oder höher gilt als Mitte
+  if (score100 >= 96) {
+    return "Mitte";
+  }
+
+  const angle = Math.atan2(y, x) * (180 / Math.PI);
+
+  if (angle >= -22.5 && angle < 22.5) {
+    return "rechts";
+  }
+
+  if (angle >= 22.5 && angle < 67.5) {
+    return "rechts oben";
+  }
+
+  if (angle >= 67.5 && angle < 112.5) {
+    return "oben";
+  }
+
+  if (angle >= 112.5 && angle < 157.5) {
+    return "links oben";
+  }
+
+  if (angle >= 157.5 || angle < -157.5) {
+    return "links";
+  }
+
+  if (angle >= -157.5 && angle < -112.5) {
+    return "links unten";
+  }
+
+  if (angle >= -112.5 && angle < -67.5) {
+    return "unten";
+  }
+
+  return "rechts unten";
+}
   function removeLastShot() {
     setShots((current) => current.slice(0, -1));
   }
@@ -182,14 +288,14 @@ export default function NewResultPage() {
     }
 
     if (inputType === "individual") {
-      const shotRows = shots.map((score, index) => ({
-        result_id: result.id,
-        user_id: user.id,
-        shot_number: index + 1,
-        score,
-        x_position: null,
-        y_position: null,
-      }));
+    const shotRows = shots.map((shot, index) => ({
+  result_id: result.id,
+  user_id: user.id,
+  shot_number: index + 1,
+  score: shot.score,
+  x_position: shot.x,
+  y_position: shot.y,
+}));
 
       const { error: shotsError } = await supabase
         .from("result_shots")
@@ -342,83 +448,204 @@ export default function NewResultPage() {
                   />
                 </div>
               )}
+<div className="mt-8 border-t pt-6">
+  <div className="flex items-center justify-between">
+    <h2 className="text-xl font-bold">
+      Schüsse erfassen
+    </h2>
 
-              <div className="mt-8 border-t pt-6">
-                <div className="flex items-center justify-between">
-                  <h2 className="text-xl font-bold">
-                    Schüsse erfassen
-                  </h2>
+    <span className="text-sm text-slate-500">
+      {shotMode === "fixed"
+        ? `${shots.length} / ${plannedShots}`
+        : `${shots.length} Schüsse`}
+    </span>
+  </div>
 
-                  <span className="text-sm text-slate-500">
-                    {shotMode === "fixed"
-                      ? `${shots.length} / ${plannedShots}`
-                      : `${shots.length} Schüsse`}
-                  </span>
-                </div>
+<div className="mt-6">
+  <p className="mb-3 text-sm font-medium text-slate-700">
+    Schussposition{" "}
+    <span className="font-normal text-slate-400">
+      (optional)
+    </span>
+  </p>
 
-                <div className="mt-5 grid grid-cols-6 gap-2 sm:grid-cols-11">
-                  {Array.from({ length: 11 }, (_, score) => (
-                    <button
-                      key={score}
-                      type="button"
-                      onClick={() => addShot(score)}
-                      className="rounded-lg border bg-white px-3 py-3 font-bold hover:bg-slate-100"
-                    >
-                      {score}
-                    </button>
-                  ))}
-                </div>
+<Target
+  selectedX={selectedX}
+  selectedY={selectedY}
+  selectedScore={selectedScore}
+  onSelect={(x, y, score) => {
+    setSelectedX(x);
+    setSelectedY(y);
+    setSelectedScore(score);
+  }}
+/>
 
-                <div className="mt-6 flex flex-wrap gap-2">
-                  {shots.map((shot, index) => (
-                    <span
-                      key={index}
-                      className="rounded-full bg-slate-100 px-3 py-1 text-sm"
-                    >
-                      {index + 1}: {shot}
-                    </span>
-                  ))}
-                </div>
+{selectedX !== null &&
+selectedY !== null &&
+selectedScore !== null ? (
+  <div className="mt-4 text-center">
+    <p className="text-2xl font-bold text-slate-900">
+      {selectedScore} Punkte
+    </p>
 
-                <div className="mt-6 grid gap-4 sm:grid-cols-3">
-                  <div className="rounded-xl bg-slate-50 p-4">
-                    <p className="text-sm text-slate-500">
-                      Schüsse
-                    </p>
-                    <p className="text-2xl font-bold">
-                      {shots.length}
-                    </p>
-                  </div>
+    <p className="mt-1 font-medium text-slate-700">
+      {getPositionLabel(
+  selectedX,
+  selectedY,
+  selectedScore
+)}
+    </p>
 
-                  <div className="rounded-xl bg-slate-50 p-4">
-                    <p className="text-sm text-slate-500">
-                      Total
-                    </p>
-                    <p className="text-2xl font-bold">
-                      {totalScore}
-                    </p>
-                  </div>
+    <p className="mt-1 text-xs text-slate-400">
+      x: {selectedX.toFixed(3)} · y: {selectedY.toFixed(3)}
+    </p>
 
-                  <div className="rounded-xl bg-slate-50 p-4">
-                    <p className="text-sm text-slate-500">
-                      Durchschnitt
-                    </p>
-                    <p className="text-2xl font-bold">
-                      {averageScore.toFixed(2)}
-                    </p>
-                  </div>
-                </div>
+    <div className="mt-4 flex justify-center gap-3">
+      <button
+        type="button"
+        onClick={() =>
+          addShot(selectedScore, selectedX, selectedY)
+        }
+        style={{
+          backgroundColor: "#dc2626",
+          color: "white",
+          padding: "12px 20px",
+          borderRadius: "8px",
+          border: "none",
+          fontWeight: "bold",
+          cursor: "pointer",
+        }}
+      >
+        Schuss übernehmen
+      </button>
 
-                <button
-                  type="button"
-                  onClick={removeLastShot}
-                  disabled={shots.length === 0}
-                  className="mt-5 rounded-lg border px-4 py-2 text-sm disabled:opacity-40"
-                >
-                  Letzten Schuss entfernen
-                </button>
-              </div>
-            </>
+      <button
+        type="button"
+        onClick={() => {
+          setSelectedX(null);
+          setSelectedY(null);
+          setSelectedScore(null);
+        }}
+        style={{
+          backgroundColor: "white",
+          color: "#475569",
+          padding: "12px 20px",
+          borderRadius: "8px",
+          border: "1px solid #cbd5e1",
+          cursor: "pointer",
+        }}
+      >
+        Abbrechen
+      </button>
+    </div>
+  </div>
+) : (
+   <p className="mt-3 text-center text-sm text-slate-500">
+    Tippe oder klicke auf die Scheibe.
+  </p>
+)}
+</div>
+ <div className="mt-6 text-center">
+  <button
+    type="button"
+    onClick={() => setShowManualInput((current) => !current)}
+    style={{
+      backgroundColor: "white",
+      color: "#475569",
+      padding: "10px 16px",
+      borderRadius: "8px",
+      border: "1px solid #cbd5e1",
+      cursor: "pointer",
+    }}
+  >
+    {showManualInput
+      ? "Manuelle Eingabe schließen"
+      : "Wert ohne Position manuell erfassen"}
+  </button>
+
+  {showManualInput && (
+    <div
+      style={{
+        marginTop: "16px",
+        display: "flex",
+        flexWrap: "wrap",
+        justifyContent: "center",
+        gap: "8px",
+      }}
+    >
+      {Array.from({ length: 11 }, (_, score) => (
+        <button
+          key={score}
+          type="button"
+          onClick={() => addShot(score, null, null)}
+          style={{
+            width: "44px",
+            height: "44px",
+            backgroundColor: "white",
+            border: "1px solid #cbd5e1",
+            borderRadius: "8px",
+            fontWeight: "bold",
+            cursor: "pointer",
+          }}
+        >
+          {score}
+        </button>
+      ))}
+    </div>
+  )}
+</div>
+
+  <div className="mt-6 flex flex-wrap gap-2">
+    {shots.map((shot, index) => (
+      <span
+        key={index}
+        className="rounded-full bg-slate-100 px-3 py-1 text-sm"
+      >
+        {index + 1}: {shot.score}
+        {shot.x !== null && shot.y !== null && " 🎯"}
+      </span>
+    ))}
+  </div>
+
+  <div className="mt-6 grid gap-4 sm:grid-cols-3">
+    <div className="rounded-xl bg-slate-50 p-4">
+      <p className="text-sm text-slate-500">
+        Schüsse
+      </p>
+      <p className="text-2xl font-bold">
+        {shots.length}
+      </p>
+    </div>
+
+    <div className="rounded-xl bg-slate-50 p-4">
+      <p className="text-sm text-slate-500">
+        Total
+      </p>
+      <p className="text-2xl font-bold">
+        {totalScore}
+      </p>
+    </div>
+
+    <div className="rounded-xl bg-slate-50 p-4">
+      <p className="text-sm text-slate-500">
+        Durchschnitt
+      </p>
+      <p className="text-2xl font-bold">
+        {averageScore.toFixed(2)}
+      </p>
+    </div>
+  </div>
+
+  <button
+    type="button"
+    onClick={removeLastShot}
+    disabled={shots.length === 0}
+    className="mt-5 rounded-lg border px-4 py-2 text-sm disabled:opacity-40"
+  >
+    Letzten Schuss entfernen
+  </button>
+</div>
+</>
           ) : (
             <div className="mt-6 grid gap-5 sm:grid-cols-2">
               <div>
