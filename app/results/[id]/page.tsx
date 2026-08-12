@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { supabase } from "../../../lib/supabase";
+import Target from "../../../components/Target";
 
 type Shot = {
   id: string;
@@ -296,168 +297,138 @@ export default function ResultDetailPage() {
           </div>
         </section>
 
-        {result.input_type === "individual" &&
-          shots.length > 0 && (
-            <section className="mt-6 rounded-2xl border bg-white p-6">
-              <div className="flex items-center justify-between">
-                <h2 className="text-lg font-bold text-slate-900">
-                  Einzelschüsse
-                </h2>
+      
+            {shots.some(
+  (shot) =>
+    shot.x_position !== null &&
+    shot.y_position !== null
+) && (
+  <section className="mt-6 rounded-2xl border bg-white p-6">
+    <h2 className="text-lg font-bold text-slate-900">
+      Schussbild
+    </h2>
 
-                <span className="text-sm text-slate-500">
-                  {shots.length} Schüsse
-                </span>
-              </div>
+    <p className="mt-1 text-sm text-slate-500">
+      Alle Treffer mit gespeicherter Position.
+    </p>
 
-              <div className="mt-6 grid grid-cols-5 gap-3 sm:grid-cols-10">
-                {shots.map((shot) => (
-                  <div
-                    key={shot.id}
-                    className="text-center"
-                  >
-                    <div className="flex aspect-square items-center justify-center rounded-full bg-slate-100 text-lg font-bold text-slate-900">
-                      {Number(shot.score)}
-                    </div>
+    <div
+      style={{
+        position: "relative",
+        width: "300px",
+        height: "300px",
+        margin: "24px auto 0",
+      }}
+    >
+   <Target
+  selectedX={null}
+  selectedY={null}
+  selectedScore={null}
+  readOnly
+/>
 
-                    <p className="mt-1 text-xs text-slate-400">
-                      {shot.shot_number}
-                    </p>
-                  </div>
-                ))}
-              </div>
-            </section>
-          )}
-          {result.input_type === "individual" &&
-  shots.some(
-    (shot) =>
-      shot.x_position !== null &&
-      shot.y_position !== null
-  ) && (
-    <section className="mt-6 rounded-2xl border bg-white p-6">
-      <div>
-        <h2 className="text-lg font-bold text-slate-900">
-          Schussbild
-        </h2>
+      {shots
+        .filter(
+          (shot) =>
+            shot.x_position !== null &&
+            shot.y_position !== null
+        )
+        .map((shot) => (
+          <div
+            key={shot.id}
+            title={`Schuss ${shot.shot_number}: ${shot.score}`}
+            style={{
+              position: "absolute",
+              left: `${((Number(shot.x_position) + 1) / 2) * 100}%`,
+              top: `${((1 - Number(shot.y_position)) / 2) * 100}%`,
+              width: "24px",
+              height: "24px",
+              transform: "translate(-50%, -50%)",
+              borderRadius: "50%",
+              backgroundColor: "#dc2626",
+              border: "2px solid white",
+              color: "white",
+              fontSize: "11px",
+              fontWeight: "bold",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              zIndex: 20,
+              pointerEvents: "none",
+            }}
+          >
+            {shot.shot_number}
+          </div>
+        ))}
+    </div>
 
-        <p className="mt-1 text-sm text-slate-500">
-          Positionen der erfassten Einzelschüsse
-        </p>
-      </div>
+    <p className="mt-3 text-center text-xs text-slate-500">
+      Die Zahl im Treffer entspricht der Schussnummer.
+    </p>
+  </section>
 
-      <div
-        style={{
-          position: "relative",
-          width: "300px",
-          height: "300px",
-          maxWidth: "100%",
-          margin: "30px auto 10px",
-          border: "4px solid black",
-          borderRadius: "50%",
-          backgroundColor: "white",
-          overflow: "hidden",
-        }}
-      >
-        <div
-          style={{
-            position: "absolute",
-            inset: "10%",
-            border: "1px solid #94a3b8",
-            borderRadius: "50%",
-          }}
-        />
+)}
+<div className="mt-5 border-t pt-4">
+  <div className="overflow-hidden rounded-lg border border-slate-200 bg-white">
+    <table className="w-full bg-white text-sm text-slate-900">
+      <thead className="bg-white text-left text-slate-900">
+        <tr>
+<th
+  className="px-6 py-3 font-normal"
+  style={{ textAlign: "right" }}
+>
+  Schuss
+</th>
 
-        <div
-          style={{
-            position: "absolute",
-            inset: "20%",
-            border: "1px solid #94a3b8",
-            borderRadius: "50%",
-          }}
-        />
+<th
+  className="px-6 py-3 font-normal"
+  style={{ textAlign: "right" }}
+>
+  Wert
+</th>
 
-        <div
-          style={{
-            position: "absolute",
-            inset: "30%",
-            border: "1px solid #94a3b8",
-            borderRadius: "50%",
-          }}
-        />
+<th
+  className="px-6 py-3 font-normal"
+  style={{ textAlign: "left" }}
+>
+  Bemerkung
+</th>
+        </tr>
+      </thead>
 
-        <div
-          style={{
-            position: "absolute",
-            inset: "40%",
-            border: "1px solid #94a3b8",
-            borderRadius: "50%",
-          }}
-        />
+      <tbody className="divide-y divide-slate-200 bg-white text-slate-900">
+        {shots.map((shot) => (
+          <tr key={shot.id}>
+<td
+  className="px-6 py-2"
+  style={{ textAlign: "right" }}
+>
+  {shot.shot_number}
+</td>
 
-        <div
-          style={{
-            position: "absolute",
-            left: "50%",
-            top: 0,
-            width: "1px",
-            height: "100%",
-            backgroundColor: "#e2e8f0",
-          }}
-        />
+<td
+  className="px-6 py-2"
+  style={{ textAlign: "right" }}
+>
+  {Number(shot.score)}
+</td>
 
-        <div
-          style={{
-            position: "absolute",
-            left: 0,
-            top: "50%",
-            width: "100%",
-            height: "1px",
-            backgroundColor: "#e2e8f0",
-          }}
-        />
+<td
+  className="px-6 py-2"
+  style={{ textAlign: "left" }}
+>
+  {shot.x_position === null ||
+  shot.y_position === null
+    ? "ohne Position"
+    : ""}
+</td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  </div>
+</div>        
 
-        {shots
-          .filter(
-            (shot) =>
-              shot.x_position !== null &&
-              shot.y_position !== null
-          )
-          .map((shot) => (
-            <div
-              key={shot.id}
-              title={`Schuss ${shot.shot_number}: ${shot.score}`}
-              style={{
-                position: "absolute",
-                left: `${
-                  ((Number(shot.x_position) + 1) / 2) * 100
-                }%`,
-                top: `${
-                  ((1 - Number(shot.y_position)) / 2) * 100
-                }%`,
-                width: "24px",
-                height: "24px",
-                transform: "translate(-50%, -50%)",
-                borderRadius: "50%",
-                backgroundColor: "#dc2626",
-                border: "2px solid white",
-                color: "white",
-                fontSize: "11px",
-                fontWeight: "bold",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                zIndex: 10,
-              }}
-            >
-              {shot.shot_number}
-            </div>
-          ))}
-      </div>
-
-      <p className="mt-4 text-center text-xs text-slate-500">
-        Die Zahl im Treffer entspricht der Schussnummer.
-      </p>
-    </section>
-  )}
         {result.notes && (
           <section className="mt-6 rounded-2xl border bg-white p-6">
             <h2 className="text-lg font-bold text-slate-900">
