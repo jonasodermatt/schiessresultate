@@ -33,6 +33,18 @@ type Result = {
   notes: string | null;
   equipment: Equipment | Equipment[] | null;
   result_shots: Shot[];
+    shooting_ranges:
+    | {
+        name: string;
+        city: string | null;
+        distance_m: number | null;
+      }
+    | {
+        name: string;
+        city: string | null;
+        distance_m: number | null;
+      }[]
+    | null;
 };
 
 export default function ResultDetailPage() {
@@ -222,7 +234,32 @@ export default function ResultDetailPage() {
           <h1 className="mt-1 text-3xl font-bold text-slate-900">
             {result.discipline}
           </h1>
+           {result.shooting_ranges && (
+  <p className="mt-2 text-slate-600">
+    📍{" "}
+    {Array.isArray(result.shooting_ranges)
+      ? result.shooting_ranges[0]?.name
+      : result.shooting_ranges.name}
 
+    {(() => {
+      const range = Array.isArray(result.shooting_ranges)
+        ? result.shooting_ranges[0]
+        : result.shooting_ranges;
+
+      if (!range) return "";
+
+      return [
+        range.city,
+        range.distance_m !== null
+          ? `${range.distance_m} m`
+          : null,
+      ]
+        .filter(Boolean)
+        .map((value) => ` · ${value}`)
+        .join("");
+    })()}
+  </p>
+)}
           {equipment && (
             <p className="mt-2 text-slate-600">
               🔫{" "}

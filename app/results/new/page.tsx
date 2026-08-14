@@ -16,6 +16,12 @@ type Shot = {
   x: number | null;
   y: number | null;
 };
+type ShootingRange = {
+  id: string;
+  name: string;
+  city: string | null;
+  distance_m: number | null;
+};
 
 export default function NewResultPage() {
   const router = useRouter();
@@ -38,37 +44,77 @@ export default function NewResultPage() {
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState("");
   const [showManualInput, setShowManualInput] = useState(false);
+  const [shootingDate, setShootingDate] = useState(() => {
+  const now = new Date();
+  const offset = now.getTimezoneOffset();
+  const localDate = new Date(now.getTime() - offset * 60 * 1000);
+
+  return localDate.toISOString().slice(0, 16);
+});
+const [shootingRanges, setShootingRanges] = useState<
+  ShootingRange[]
+>([]);
+
+const [shootingRangeId, setShootingRangeId] = useState("");
+
 
   useEffect(() => {
-    async function loadEquipment() {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
+  async function loadData() {
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
 
-      if (!user) {
-        router.replace("/login");
-        return;
-      }
+    if (!user) {
+      router.replace("/login");
+      return;
+    }
 
-      const { data, error } = await supabase
+    // Sportgeräte laden
+    const { data: equipmentData, error: equipmentError } =
+      await supabase
         .from("equipment")
         .select("id, name")
         .eq("active", true)
         .order("name");
 
-      if (error) {
-        setMessage(`Fehler: ${error.message}`);
-        return;
-      }
-
-      setEquipment(data ?? []);
-
-      if (data && data.length > 0) {
-        setEquipmentId(data[0].id);
-      }
+    if (equipmentError) {
+      setMessage(`Fehler: ${equipmentError.message}`);
+      return;
     }
 
-    loadEquipment();
+    setEquipment(equipmentData ?? []);
+
+    if (equipmentData && equipmentData.length > 0) {
+      setEquipmentId(equipmentData[0].id);
+    }
+
+    // Schiessstände laden
+    const {
+      data: shootingRangeData,
+      error: shootingRangeError,
+    } = await supabase
+      .from("shooting_ranges")
+      .select("id, name, city, distance_m")
+      .order("name");
+
+    if (shootingRangeError) {
+      setMessage(
+        `Fehler beim Laden der Schiessstände: ${shootingRangeError.message}`
+      );
+      return;
+    }
+
+    setShootingRanges(shootingRangeData ?? []);
+
+    if (
+      shootingRangeData &&
+      shootingRangeData.length > 0
+    ) {
+      setShootingRangeId(shootingRangeData[0].id);
+    }
+  }
+
+  loadData();
   }, [router]);
 
 const totalScore = useMemo(
@@ -255,7 +301,8 @@ function getPositionLabel(
         .insert({
           user_id: user.id,
           equipment_id: equipmentId,
-          date: new Date().toISOString(),
+          shooting_range_id: shootingRangeId || null,
+          date: new Date(shootingDate).toISOString(),
           discipline,
           input_type: inputType,
           shot_mode:
@@ -351,7 +398,45 @@ function getPositionLabel(
                 className="w-full rounded-lg border px-4 py-3"
               />
             </div>
+                        <div className="mt-5 max-w-xs">
+  <label
+    htmlFor="shootingDate"
+    className="mb-2 block text-sm font-medium"
+  >
+    Datum
+  </label>
 
+  <input
+  id="shootingDate"
+  type="datetime-local"
+  value={shootingDate}
+  onChange={(e) => setShootingDate(e.target.value)}
+  className="w-full rounded-lg border px-4 py-3"
+/>
+</div>
+<div>
+  <label className="mb-2 block text-sm font-medium">
+    Schiessstand
+  </label>
+
+  <select
+    value={shootingRangeId}
+    onChange={(e) => setShootingRangeId(e.target.value)}
+    className="w-full rounded-lg border bg-white px-4 py-3"
+  >
+    <option value="">Kein Schiessstand</option>
+
+    {shootingRanges.map((range) => (
+      <option key={range.id} value={range.id}>
+        {range.name}
+        {range.city ? ` · ${range.city}` : ""}
+        {range.distance_m !== null
+          ? ` · ${range.distance_m} m`
+          : ""}
+      </option>
+    ))}
+  </select>
+</div>
             <div>
               <label className="mb-2 block text-sm font-medium">
                 Sportgerät

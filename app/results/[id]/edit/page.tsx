@@ -17,6 +17,28 @@ type Shot = {
   x_position: number | null;
   y_position: number | null;
 };
+type Result = {
+  id: string;
+  date: string;
+  discipline: string;
+  equipment_id: string;
+  shooting_range_id: string | null;
+  notes: string | null;
+  input_type: string;
+
+  shooting_ranges:
+    | {
+        name: string;
+        city: string | null;
+        distance_m: number | null;
+      }
+    | {
+        name: string;
+        city: string | null;
+        distance_m: number | null;
+      }[]
+    | null;
+};
 
 export default function EditResultPage() {
   const params = useParams();
@@ -25,7 +47,7 @@ export default function EditResultPage() {
   const [equipment, setEquipment] = useState<Equipment[]>([]);
   const [equipmentId, setEquipmentId] = useState("");
   const [discipline, setDiscipline] = useState("");
-  const [date, setDate] = useState("");
+ 
   const [notes, setNotes] = useState("");
 
   const [loading, setLoading] = useState(true);
@@ -35,6 +57,7 @@ export default function EditResultPage() {
   const [shots, setShots] = useState<Shot[]>([]);
   const [inputType, setInputType] = useState("");
   const [editingShotIndex, setEditingShotIndex] = useState<number | null>(null);
+  const [shootingDate, setShootingDate] = useState("");
 
   useEffect(() => {
     async function loadData() {
@@ -75,13 +98,27 @@ export default function EditResultPage() {
       const { data: resultData, error: resultError } =
         await supabase
           .from("results")
-          .select(`id, date, discipline, equipment_id, notes, input_type, result_shots (
+          .select(`
   id,
-  shot_number,
-  score,
-  x_position,
-  y_position
-)`)
+  date,
+  discipline,
+  equipment_id,
+  shooting_range_id,
+  notes,
+  input_type,
+  shooting_ranges (
+    name,
+    city,
+    distance_m
+  ),
+  result_shots (
+    id,
+    shot_number,
+    score,
+    x_position,
+    y_position
+  )
+`)
           .eq("id", id)
           .single();
 
@@ -96,6 +133,14 @@ export default function EditResultPage() {
       }
 
       setDiscipline(resultData.discipline);
+      const loadedDate = new Date(resultData.date);
+const offset = loadedDate.getTimezoneOffset();
+
+const localDate = new Date(
+  loadedDate.getTime() - offset * 60 * 1000
+);
+
+setShootingDate(localDate.toISOString().slice(0, 16));
       setEquipmentId(resultData.equipment_id);
       setNotes(resultData.notes ?? "");
       setInputType(resultData.input_type);
@@ -119,14 +164,15 @@ const loadedShots = [...(resultData.result_shots ?? [])]
 setShots(loadedShots);
       const resultDate = new Date(resultData.date);
 
-      const offset = resultDate.getTimezoneOffset();
-      const localDate = new Date(
-        resultDate.getTime() - offset * 60 * 1000
-      );
-
-      setDate(localDate.toISOString().slice(0, 16));
-
-      setLoading(false);
+setShootingDate(
+  new Date(
+    resultDate.getTime() -
+      resultDate.getTimezoneOffset() * 60 * 1000
+  )
+    .toISOString()
+    .slice(0, 16)
+);
+            setLoading(false);
     }
 
     loadData();
@@ -192,7 +238,7 @@ const { error } = await supabase
   .update({
     discipline: discipline.trim(),
     equipment_id: equipmentId,
-    date: new Date(date).toISOString(),
+    date: new Date(shootingDate).toISOString(),
     notes: notes.trim() || null,
 
     ...(inputType === "individual"
@@ -292,23 +338,7 @@ router.push(`/results/${id}`);
           onSubmit={handleSubmit}
           className="mt-8 rounded-2xl border bg-white p-6 shadow-sm"
         >
-          <div>
-            <label
-              htmlFor="date"
-              className="mb-2 block text-sm font-medium text-slate-700"
-            >
-              Datum und Uhrzeit
-            </label>
-
-            <input
-              id="date"
-              type="datetime-local"
-              required
-              value={date}
-              onChange={(event) => setDate(event.target.value)}
-              className="w-full rounded-lg border border-slate-300 px-4 py-3 text-slate-900"
-            />
-          </div>
+        
 
           <div className="mt-5">
             <label
@@ -328,7 +358,24 @@ router.push(`/results/${id}`);
               className="w-full rounded-lg border border-slate-300 px-4 py-3 text-slate-900"
             />
           </div>
+         
+          <div className="mt-5 max-w-xs">
+  <label
+    htmlFor="shootingDate"
+    className="mb-2 block text-sm font-medium text-slate-700"
+  >
+    Datum und Uhrzeit
+  </label>
 
+  <input
+    id="shootingDate"
+    type="datetime-local"
+    value={shootingDate}
+    onChange={(e) => setShootingDate(e.target.value)}
+    className="w-full rounded-lg border border-slate-300 px-4 py-3 text-slate-900"
+  />
+</div>
+ 
           <div className="mt-5">
             <label
               htmlFor="equipment"

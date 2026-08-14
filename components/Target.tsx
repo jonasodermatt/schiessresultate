@@ -4,11 +4,12 @@ type TargetProps = {
   selectedX: number | null;
   selectedY: number | null;
   selectedScore: number | null;
-  onSelect: (
+  onSelect?: (
     x: number,
     y: number,
     score: number
   ) => void;
+  readOnly?: boolean;
 };
 
 export default function Target({
@@ -16,10 +17,14 @@ export default function Target({
   selectedY,
   selectedScore,
   onSelect,
+  readOnly = false,
 }: TargetProps) {
   function handleTargetClick(
     event: React.MouseEvent<HTMLDivElement>
   ) {
+      if (readOnly) {
+  return;
+}
     const rect = event.currentTarget.getBoundingClientRect();
 
     const mouseX = event.clientX - rect.left;
@@ -44,11 +49,11 @@ export default function Target({
     else if (distance <= 0.90) score = 1;
     else score = 0;
 
-    onSelect(
-      Number(x.toFixed(3)),
-      Number(y.toFixed(3)),
-      score
-    );
+ onSelect?.(
+  Number(x.toFixed(3)),
+  Number(y.toFixed(3)),
+  score
+);
   }
 
   return (
@@ -62,7 +67,7 @@ export default function Target({
         borderRadius: "50%",
         backgroundColor: "white",
         overflow: "hidden",
-        cursor: "crosshair",
+        cursor: readOnly ? "default" : "crosshair",
       }}
     >
       {/* Dunkler Bereich 3 bis 10 */}
