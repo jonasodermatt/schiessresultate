@@ -10,6 +10,14 @@ type Equipment = {
   id: string;
   name: string;
 };
+type ShootingRange = {
+  id: string;
+  name: string;
+  city: string | null;
+  distance_m: number | null;
+  latitude: number | null;
+  longitude: number | null;
+};
 type Shot = {
   id: string;
   shot_number: number;
@@ -46,6 +54,8 @@ export default function EditResultPage() {
 
   const [equipment, setEquipment] = useState<Equipment[]>([]);
   const [equipmentId, setEquipmentId] = useState("");
+  const [shootingRanges, setShootingRanges] = useState<ShootingRange[]>([]);
+const [shootingRangeId, setShootingRangeId] = useState("");
   const [discipline, setDiscipline] = useState("");
  
   const [notes, setNotes] = useState("");
@@ -94,7 +104,25 @@ export default function EditResultPage() {
       }
 
       setEquipment(equipmentData ?? []);
+      const {
+  data: shootingRangeData,
+  error: shootingRangeError,
+} = await supabase
+  .from("shooting_ranges")
+  .select(
+    "id, name, city, distance_m, latitude, longitude"
+  )
+  .order("name");
 
+if (shootingRangeError) {
+  setMessage(
+    `Fehler beim Laden der Schiessstände: ${shootingRangeError.message}`
+  );
+  setLoading(false);
+  return;
+}
+
+setShootingRanges(shootingRangeData ?? []);
       const { data: resultData, error: resultError } =
         await supabase
           .from("results")
@@ -142,6 +170,9 @@ const localDate = new Date(
 
 setShootingDate(localDate.toISOString().slice(0, 16));
       setEquipmentId(resultData.equipment_id);
+      setShootingRangeId(
+  resultData.shooting_range_id ?? ""
+);
       setNotes(resultData.notes ?? "");
       setInputType(resultData.input_type);
 
@@ -191,6 +222,67 @@ setShootingDate(
     )
   );
 }
+
+async function loadWeather() {
+  if (!shootingRangeId || !shootingDate) {
+    return null;
+  }
+
+  const range = shootingRanges.find(
+    (item) => item.id === shootingRangeId
+  );
+
+  if (
+    !range ||
+    range.latitude === null ||
+    range.longitude === null
+  ) {
+    return null;
+  }
+
+  const shootingDay = shootingDate.slice(0, 10);
+  const shootingHour =
+    shootingDate.slice(0, 13) + ":00";
+
+  const params = new URLSearchParams({
+    latitude: String(range.latitude),
+    longitude: String(range.longitude),
+    start_date: shootingDay,
+    end_date: shootingDay,
+    hourly:
+      "temperature_2m,relative_humidity_2m,surface_pressure,wind_speed_10m,wind_direction_10m,weather_code",
+    timezone: "auto",
+  });
+
+  const response = await fetch(
+    `https://archive-api.open-meteo.com/v1/archive?${params.toString()}`
+  );
+
+  if (!response.ok) {
+    return null;
+  }
+
+  const data = await response.json();
+
+  const index = data.hourly?.time?.findIndex(
+    (time: string) => time === shootingHour
+  );
+
+  if (index === undefined || index < 0) {
+    return null;
+  }
+
+  return {
+    temperature: data.hourly.temperature_2m[index],
+    humidity: data.hourly.relative_humidity_2m[index],
+    pressure: data.hourly.surface_pressure[index],
+    windSpeed: data.hourly.wind_speed_10m[index],
+    windDirection:
+      data.hourly.wind_direction_10m[index],
+    weatherCode: data.hourly.weather_code[index],
+  };
+}
+
   async function handleSubmit(
     event: FormEvent<HTMLFormElement>
   ) {
@@ -212,10 +304,10 @@ setShootingDate(
       return;
     }
 
-    if (!date) {
-      setMessage("Bitte Datum und Uhrzeit eingeben.");
-      return;
-    }
+   if (!shootingDate) {
+  setMessage("Bitte Datum und Uhrzeit eingeben.");
+  return;
+}
 
     setSaving(true);
     setMessage("");
@@ -232,14 +324,31 @@ if (inputType === "individual") {
   averageScore =
     shots.length > 0 ? totalScore / shots.length : 0;
 }
+let weather = null;
 
+try {
+  weather = await loadWeather();
+} catch (error) {
+  console.error(
+    "Wetter konnte nicht aktualisiert werden:",
+    error
+  );
+}
 const { error } = await supabase
   .from("results")
   .update({
     discipline: discipline.trim(),
     equipment_id: equipmentId,
+    shooting_range_id: shootingRangeId || null,
     date: new Date(shootingDate).toISOString(),
     notes: notes.trim() || null,
+
+    weather_temperature: weather?.temperature ?? null,
+weather_humidity: weather?.humidity ?? null,
+weather_pressure: weather?.pressure ?? null,
+weather_wind_speed: weather?.windSpeed ?? null,
+weather_wind_direction: weather?.windDirection ?? null,
+weather_code: weather?.weatherCode ?? null,
 
     ...(inputType === "individual"
       ? {
@@ -404,7 +513,35 @@ router.push(`/results/${id}`);
               ))}
             </select>
           </div>
-         
+         <div className="mt-5">
+  <label
+    htmlFor="shootingRange"
+    className="mb-2 block text-sm font-medium text-slate-700"
+  >
+    Schiessstand
+  </label>
+
+  <select
+    id="shootingRange"
+    value={shootingRangeId}
+    onChange={(event) =>
+      setShootingRangeId(event.target.value)
+    }
+    className="w-full rounded-lg border border-slate-300 bg-white px-4 py-3 text-slate-900"
+  >
+    <option value="">Kein Schiessstand</option>
+
+    {shootingRanges.map((range) => (
+      <option key={range.id} value={range.id}>
+        {range.name}
+        {range.city ? ` · ${range.city}` : ""}
+        {range.distance_m !== null
+          ? ` · ${range.distance_m} m`
+          : ""}
+      </option>
+    ))}
+  </select>
+</div>
   {inputType === "individual" && shots.length > 0 && (
   <div className="mt-7 border-t pt-6">
     <h2 className="text-lg font-bold text-slate-900">

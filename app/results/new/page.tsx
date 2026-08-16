@@ -21,6 +21,8 @@ type ShootingRange = {
   name: string;
   city: string | null;
   distance_m: number | null;
+  latitude: number | null;
+  longitude: number | null;
 };
 
 export default function NewResultPage() {
@@ -94,8 +96,10 @@ const [shootingRangeId, setShootingRangeId] = useState("");
       error: shootingRangeError,
     } = await supabase
       .from("shooting_ranges")
-      .select("id, name, city, distance_m")
-      .order("name");
+.select(
+  "id, name, city, distance_m, latitude, longitude"
+)
+.order("name"); 
 
     if (shootingRangeError) {
       setMessage(
@@ -235,6 +239,64 @@ function getPositionLabel(
     setShots((current) => current.slice(0, -1));
   }
 
+  async function loadWeather() {
+  if (!shootingRangeId || !shootingDate) {
+    return null;
+  }
+
+  const range = shootingRanges.find(
+    (item) => item.id === shootingRangeId
+  );
+
+  if (
+    !range ||
+    range.latitude === null ||
+    range.longitude === null
+  ) {
+    return null;
+  }
+
+  const shootingDay = shootingDate.slice(0, 10);
+  const shootingHour = shootingDate.slice(0, 13) + ":00";
+
+  const params = new URLSearchParams({
+    latitude: String(range.latitude),
+    longitude: String(range.longitude),
+    start_date: shootingDay,
+    end_date: shootingDay,
+    hourly:
+      "temperature_2m,relative_humidity_2m,surface_pressure,wind_speed_10m,wind_direction_10m,weather_code",
+    timezone: "auto",
+  });
+
+  const response = await fetch(
+    `https://archive-api.open-meteo.com/v1/archive?${params.toString()}`
+  );
+
+  if (!response.ok) {
+    return null;
+  }
+
+  const data = await response.json();
+
+  const index = data.hourly?.time?.findIndex(
+    (time: string) => time === shootingHour
+  );
+
+  if (index === undefined || index < 0) {
+    return null;
+  }
+
+  return {
+    temperature: data.hourly.temperature_2m[index],
+    humidity: data.hourly.relative_humidity_2m[index],
+    pressure: data.hourly.surface_pressure[index],
+    windSpeed: data.hourly.wind_speed_10m[index],
+    windDirection: data.hourly.wind_direction_10m[index],
+    weatherCode: data.hourly.weather_code[index],
+  };
+}
+
   async function saveResult() {
     setMessage("");
 
@@ -294,12 +356,19 @@ function getPositionLabel(
     }
 
     setSaving(true);
+    let weather = null;
 
+try {
+  weather = await loadWeather();
+} catch (error) {
+  console.error("Wetter konnte nicht geladen werden:", error);
+}
     const { data: result, error: resultError } =
       await supabase
         .from("results")
         .insert({
           user_id: user.id,
+
           equipment_id: equipmentId,
           shooting_range_id: shootingRangeId || null,
           date: new Date(shootingDate).toISOString(),
@@ -320,6 +389,12 @@ function getPositionLabel(
           total_score: resultTotal,
           average_score: resultAverage,
           notes: notes || null,
+          weather_temperature: weather?.temperature ?? null,
+weather_humidity: weather?.humidity ?? null,
+weather_pressure: weather?.pressure ?? null,
+weather_wind_speed: weather?.windSpeed ?? null,
+weather_wind_direction: weather?.windDirection ?? null,
+weather_code: weather?.weatherCode ?? null,
         })
         .select("id")
         .single();
