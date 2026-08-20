@@ -418,35 +418,26 @@ if (error) {
 
 if (inputType === "individual") {
   for (const shot of shots) {
-    const { error: shotError } = await supabase
-      .from("result_shots")
-      .update({
-  score: shot.score,
-  x_position: shot.x_position,
-  y_position: shot.y_position,
-})
-      .eq("id", shot.id);
+   const { error: shotError } = await supabase
+  .from("result_shots")
+  .update({
+    score: shot.score,
+    x_position: shot.x_position,
+    y_position: shot.y_position,
+  })
+  .eq("id", shot.id);
 
-    if (shotError) {
-      setMessage(
-        `Fehler beim Speichern der Schüsse: ${shotError.message}`
-      );
-      setSaving(false);
-      return;
-    }
+if (shotError) {
+  setMessage(
+    `Fehler beim Speichern der Schüsse: ${shotError.message}`
+  );
+  setSaving(false);
+  return;
+}
   }
 }
 
 router.push(`/results/${id}`);
-
-    if (error) {
-      setMessage(`Fehler beim Speichern: ${error.message}`);
-      setSaving(false);
-      return;
-    }
-
-    router.push(`/results/${id}`);
-  }
 
   if (loading) {
     return (

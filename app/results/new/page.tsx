@@ -730,8 +730,7 @@ selectedScore !== null ? (
     <p className="mt-1 font-medium text-slate-700">
       {getPositionLabel(
   selectedX,
-  selectedY,
-  selectedScore
+  selectedY
 )}
     </p>
 
