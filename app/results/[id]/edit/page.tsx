@@ -17,6 +17,7 @@ type ShootingRange = {
   distance_m: number | null;
   latitude: number | null;
   longitude: number | null;
+   active: boolean;
 };
 type Shot = {
   id: string;
@@ -68,6 +69,10 @@ const [shootingRangeId, setShootingRangeId] = useState("");
   const [inputType, setInputType] = useState("");
   const [editingShotIndex, setEditingShotIndex] = useState<number | null>(null);
   const [shootingDate, setShootingDate] = useState("");
+  const [favoriteShootingRangeIds, setFavoriteShootingRangeIds] =
+  useState<string[]>([]);
+
+const [shootingRangeSearch, setShootingRangeSearch] = useState("");
 
   useEffect(() => {
     async function loadData() {
@@ -104,14 +109,15 @@ const [shootingRangeId, setShootingRangeId] = useState("");
       }
 
       setEquipment(equipmentData ?? []);
-      const {
+const {
   data: shootingRangeData,
   error: shootingRangeError,
 } = await supabase
   .from("shooting_ranges")
   .select(
-    "id, name, city, distance_m, latitude, longitude"
+    "id, name, city, distance_m, latitude, longitude, active"
   )
+  .eq("active", true)
   .order("name");
 
 if (shootingRangeError) {
@@ -123,6 +129,26 @@ if (shootingRangeError) {
 }
 
 setShootingRanges(shootingRangeData ?? []);
+console.log("Schiessstände:", shootingRangeData);
+const { data: favoriteData, error: favoriteError } =
+  await supabase
+    .from("shooting_range_favorites")
+    .select("shooting_range_id")
+    .eq("user_id", user.id);
+
+if (favoriteError) {
+  setMessage(
+    `Fehler beim Laden der Favoriten: ${favoriteError.message}`
+  );
+  setLoading(false);
+  return;
+}
+
+setFavoriteShootingRangeIds(
+  (favoriteData ?? []).map(
+    (favorite) => favorite.shooting_range_id
+  )
+);
       const { data: resultData, error: resultError } =
         await supabase
           .from("results")
@@ -173,6 +199,30 @@ setShootingDate(localDate.toISOString().slice(0, 16));
       setShootingRangeId(
   resultData.shooting_range_id ?? ""
 );
+if (
+  resultData.shooting_range_id &&
+  !shootingRangeData?.some(
+    (range) => range.id === resultData.shooting_range_id
+  )
+) {
+  const {
+    data: historicalRange,
+    error: historicalRangeError,
+  } = await supabase
+    .from("shooting_ranges")
+    .select(
+      "id, name, city, distance_m, latitude, longitude, active"
+    )
+    .eq("id", resultData.shooting_range_id)
+    .single();
+
+  if (!historicalRangeError && historicalRange) {
+    setShootingRanges((current) => [
+      historicalRange,
+      ...current,
+    ]);
+  }
+}
       setNotes(resultData.notes ?? "");
       setInputType(resultData.input_type);
 
@@ -407,7 +457,24 @@ router.push(`/results/${id}`);
       </main>
     );
   }
+  const searchedShootingRanges = shootingRanges.filter((range) => {
+      const search = shootingRangeSearch.trim().toLowerCase();
 
+
+  
+
+  if (!search) {
+    return false;
+  }
+    if (!range.active) {
+    return false;
+  }
+
+  return (
+    range.name.toLowerCase().includes(search) ||
+    (range.city ?? "").toLowerCase().includes(search)
+  );
+});
   return (
     <main className="min-h-screen bg-slate-50">
       <header className="border-b bg-white">
@@ -513,7 +580,7 @@ router.push(`/results/${id}`);
               ))}
             </select>
           </div>
-         <div className="mt-5">
+        <div className="mt-5">
   <label
     htmlFor="shootingRange"
     className="mb-2 block text-sm font-medium text-slate-700"
@@ -531,16 +598,72 @@ router.push(`/results/${id}`);
   >
     <option value="">Kein Schiessstand</option>
 
-    {shootingRanges.map((range) => (
-      <option key={range.id} value={range.id}>
-        {range.name}
-        {range.city ? ` · ${range.city}` : ""}
-        {range.distance_m !== null
-          ? ` · ${range.distance_m} m`
-          : ""}
-      </option>
-    ))}
+    {shootingRangeId &&
+      !favoriteShootingRangeIds.includes(shootingRangeId) &&
+      shootingRanges
+        .filter((range) => range.id === shootingRangeId)
+        .map((range) => (
+        <option key={range.id} value={range.id}>
+  {!range.active ? "⛔ " : ""}
+  {range.name}
+  {range.city ? ` · ${range.city}` : ""}
+  {range.distance_m !== null
+    ? ` · ${range.distance_m} m`
+    : ""}
+  {!range.active ? " · deaktiviert" : ""}
+</option>
+        ))}
+
+    {shootingRanges
+  .filter(
+    (range) =>
+      range.active &&
+      favoriteShootingRangeIds.includes(range.id)
+  )
+  .map((range) => (
+        <option key={range.id} value={range.id}>
+          ★ {range.name}
+          {range.city ? ` · ${range.city}` : ""}
+          {range.distance_m !== null
+            ? ` · ${range.distance_m} m`
+            : ""}
+        </option>
+      ))}
   </select>
+
+  <div className="mt-3">
+    <input
+      type="search"
+      value={shootingRangeSearch}
+      onChange={(event) =>
+        setShootingRangeSearch(event.target.value)
+      }
+      placeholder="🔍 Anderen Schiessstand suchen..."
+      className="w-full rounded-lg border border-slate-300 bg-white px-4 py-3 text-slate-900"
+    />
+  </div>
+
+  {searchedShootingRanges.length > 0 && (
+    <div className="mt-2 overflow-hidden rounded-lg border border-slate-200 bg-white">
+      {searchedShootingRanges.map((range) => (
+        <button
+          key={range.id}
+          type="button"
+          onClick={() => {
+            setShootingRangeId(range.id);
+            setShootingRangeSearch("");
+          }}
+          className="block w-full border-b border-slate-100 px-4 py-3 text-left text-sm text-slate-900 last:border-b-0"
+        >
+          {range.name}
+          {range.city ? ` · ${range.city}` : ""}
+          {range.distance_m !== null
+            ? ` · ${range.distance_m} m`
+            : ""}
+        </button>
+      ))}
+    </div>
+  )}
 </div>
   {inputType === "individual" && shots.length > 0 && (
   <div className="mt-7 border-t pt-6">

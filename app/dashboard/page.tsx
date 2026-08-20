@@ -153,7 +153,7 @@ export default function DashboardPage() {
           </Link>
         </section>
 
-        <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
           <Link
             href="/results"
             className="rounded-2xl border bg-white p-6 shadow-sm transition hover:shadow-md"
@@ -205,6 +205,20 @@ export default function DashboardPage() {
               Persönliche Angaben verwalten.
             </p>
           </Link>
+          <Link
+  href="/shooting-ranges"
+  className="rounded-2xl border bg-white p-6 shadow-sm transition hover:shadow-md"
+>
+  <div className="mb-4 text-3xl">🏟️</div>
+
+  <h2 className="font-bold text-slate-900">
+    Schiessstände
+  </h2>
+
+  <p className="mt-2 text-sm text-slate-600">
+    Schiessstände suchen, favorisieren und verwalten.
+  </p>
+</Link>
         </section>
 
         <section className="mt-8 grid gap-4 md:grid-cols-3">
@@ -289,6 +303,7 @@ export default function DashboardPage() {
               >
                 Alle Resultate ansehen →
               </Link>
+
             </div>
           ) : (
             <div className="rounded-2xl border border-dashed bg-white p-8 text-center">

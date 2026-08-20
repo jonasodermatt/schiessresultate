@@ -58,7 +58,9 @@ const [shootingRanges, setShootingRanges] = useState<
 >([]);
 
 const [shootingRangeId, setShootingRangeId] = useState("");
-
+const [favoriteShootingRangeIds, setFavoriteShootingRangeIds] =
+  useState<string[]>([]);
+  const [shootingRangeSearch, setShootingRangeSearch] = useState("");
 
   useEffect(() => {
   async function loadData() {
@@ -109,7 +111,24 @@ const [shootingRangeId, setShootingRangeId] = useState("");
     }
 
     setShootingRanges(shootingRangeData ?? []);
+    const { data: favoriteData, error: favoriteError } =
+  await supabase
+    .from("shooting_range_favorites")
+    .select("shooting_range_id")
+    .eq("user_id", user.id);
 
+if (favoriteError) {
+  setMessage(
+    `Fehler beim Laden der Favoriten: ${favoriteError.message}`
+  );
+  return;
+}
+
+setFavoriteShootingRangeIds(
+  (favoriteData ?? []).map(
+    (favorite) => favorite.shooting_range_id
+  )
+);
     if (
       shootingRangeData &&
       shootingRangeData.length > 0
@@ -434,7 +453,18 @@ weather_code: weather?.weatherCode ?? null,
 
     router.push("/results");
   }
+  const searchedShootingRanges = shootingRanges.filter((range) => {
+  const search = shootingRangeSearch.trim().toLowerCase();
 
+  if (!search) {
+    return false;
+  }
+
+  return (
+    range.name.toLowerCase().includes(search) ||
+    (range.city ?? "").toLowerCase().includes(search)
+  );
+});
   return (
     <main className="min-h-screen bg-slate-50">
       <header className="border-b bg-white">
@@ -500,8 +530,11 @@ weather_code: weather?.weatherCode ?? null,
     className="w-full rounded-lg border bg-white px-4 py-3"
   >
     <option value="">Kein Schiessstand</option>
-
-    {shootingRanges.map((range) => (
+    {shootingRangeId &&
+  !favoriteShootingRangeIds.includes(shootingRangeId) &&
+  shootingRanges
+    .filter((range) => range.id === shootingRangeId)
+    .map((range) => (
       <option key={range.id} value={range.id}>
         {range.name}
         {range.city ? ` · ${range.city}` : ""}
@@ -510,7 +543,53 @@ weather_code: weather?.weatherCode ?? null,
           : ""}
       </option>
     ))}
+ {shootingRanges
+  .filter((range) =>
+    favoriteShootingRangeIds.includes(range.id)
+  )
+  .map((range) => (
+    <option key={range.id} value={range.id}>
+      ★ {range.name}
+      {range.city ? ` · ${range.city}` : ""}
+      {range.distance_m !== null
+        ? ` · ${range.distance_m} m`
+        : ""}
+    </option>
+  ))}
   </select>
+  <div className="mt-3">
+  <input
+    type="search"
+    value={shootingRangeSearch}
+    onChange={(event) =>
+      setShootingRangeSearch(event.target.value)
+    }
+    placeholder="🔍 Anderen Schiessstand suchen..."
+    className="w-full rounded-lg border border-slate-300 bg-white px-4 py-3 text-slate-900"
+  />
+</div>
+{searchedShootingRanges.length > 0 && (
+  <div className="mt-2 overflow-hidden rounded-lg border border-slate-200 bg-white">
+    {searchedShootingRanges.map((range) => (
+      <button
+        key={range.id}
+        type="button"
+        onClick={() => {
+          setShootingRangeId(range.id);
+          setShootingRangeSearch("");
+        }}
+        className="block w-full border-b border-slate-100 px-4 py-3 text-left text-sm text-slate-900 last:border-b-0"
+      >
+        {range.name}
+        {range.city ? ` · ${range.city}` : ""}
+        {range.distance_m !== null
+          ? ` · ${range.distance_m} m`
+          : ""}
+      </button>
+    ))}
+  </div>
+)}
+  
 </div>
             <div>
               <label className="mb-2 block text-sm font-medium">
