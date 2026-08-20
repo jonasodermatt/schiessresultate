@@ -29,6 +29,41 @@ export default function LoginPage() {
     window.location.href = "/dashboard";
   }
 
+  async function handleForgotPassword() {
+  setMessage("");
+
+  if (!email.trim()) {
+    setMessage(
+      "Bitte gib zuerst deine E-Mail-Adresse ein."
+    );
+    return;
+  }
+
+  setLoading(true);
+
+  const { error } =
+    await supabase.auth.resetPasswordForEmail(
+      email.trim(),
+      {
+        redirectTo: `${window.location.origin}/update-password`,
+      }
+    );
+
+  if (error) {
+    setMessage(
+      `Passwort-Reset konnte nicht gesendet werden: ${error.message}`
+    );
+    setLoading(false);
+    return;
+  }
+
+  setMessage(
+    "Wir haben dir eine E-Mail zum Zurücksetzen des Passworts gesendet."
+  );
+
+  setLoading(false);
+}
+
   return (
     <main className="min-h-screen bg-slate-50 px-6 py-16">
       <div className="mx-auto max-w-md">
@@ -84,6 +119,16 @@ export default function LoginPage() {
               onChange={(event) => setPassword(event.target.value)}
               className="w-full rounded-lg border border-slate-300 px-4 py-3 text-slate-900"
             />
+            <div className="mt-2 text-right">
+  <button
+    type="button"
+    onClick={handleForgotPassword}
+    disabled={loading}
+    className="text-sm font-medium text-red-600 hover:text-red-700 disabled:opacity-50"
+  >
+    Passwort vergessen?
+  </button>
+</div>
           </div>
 
           <button
