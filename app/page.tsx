@@ -1,3 +1,4 @@
+import Link from "next/link";
 export default function Home() {
   return (
     <main className="min-h-screen bg-slate-50">
@@ -18,9 +19,12 @@ export default function Home() {
             </div>
           </div>
 
-          <button className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700">
-            Einloggen
-          </button>
+          <Link
+  href="/login"
+  className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700"
+>
+  Einloggen
+</Link>
         </div>
       </header>
 
@@ -41,13 +45,13 @@ export default function Home() {
           </p>
 
           <div className="mt-8 flex flex-wrap gap-3">
-            <button className="rounded-lg bg-red-600 px-5 py-3 font-semibold text-white">
-              Kostenlos starten
-            </button>
-
-            <button className="rounded-lg border border-slate-300 bg-white px-5 py-3 font-semibold text-slate-700">
-              Mehr erfahren
-            </button>
+            <Link
+  href="/register"
+  className="rounded-lg bg-red-600 px-5 py-3 font-semibold text-white"
+>
+  Kostenlos starten
+</Link>
+            
           </div>
         </div>
 
