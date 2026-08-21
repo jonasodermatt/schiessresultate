@@ -123,7 +123,7 @@ function changeZoom(nextZoom: number) {
     width: "300px",
     height: "300px",
     margin: "0 auto",
-    overflow: "auto",
+    overflow: "hidden",
     borderRadius: "12px",
     position: "relative",
   }}
