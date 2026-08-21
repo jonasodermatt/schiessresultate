@@ -22,7 +22,7 @@ export default function DashboardPage() {
 
   const [resultCount, setResultCount] = useState(0);
   const [averageScore, setAverageScore] = useState<number | null>(null);
-  const [bestScore, setBestScore] = useState<number | null>(null);
+  const [bestResult, setBestResult] = useState<Result | null>(null);
   const [latestResult, setLatestResult] = useState<Result | null>(null);
 
   useEffect(() => {
@@ -64,11 +64,28 @@ export default function DashboardPage() {
 
         setAverageScore(average);
 
-        const best = Math.max(
-          ...results.map((result) => Number(result.total_score))
-        );
+        const twelveMonthsAgo = new Date();
+twelveMonthsAgo.setMonth(twelveMonthsAgo.getMonth() - 12);
 
-        setBestScore(best);
+const resultsLast12Months = results.filter(
+  (result) => new Date(result.date) >= twelveMonthsAgo
+);
+
+const best =
+  resultsLast12Months.length > 0
+    ? [...resultsLast12Months].sort((a, b) => {
+        const averageDifference =
+          Number(b.average_score) - Number(a.average_score);
+
+        if (averageDifference !== 0) {
+          return averageDifference;
+        }
+
+        return b.actual_shots - a.actual_shots;
+      })[0]
+    : null;
+
+setBestResult(best);
 
         setLatestResult(results[0]);
       }
@@ -243,22 +260,36 @@ export default function DashboardPage() {
                 : "–"}
             </p>
 
-            <p className="mt-1 text-xs text-slate-400">
-              Durchschnitt pro Schuss
+            <p className="mt-1 text-sm text-slate-600">
+              pro Schuss
             </p>
           </div>
 
-          <div className="rounded-2xl border bg-white p-6">
-            <p className="text-sm text-slate-500">
-              Höchstes Total
-            </p>
+<div className="rounded-2xl border bg-white p-6">
+  <p className="text-sm text-slate-500">
+    Bestes Resultat der letzten 12 Monate
+  </p>
 
-            <p className="mt-2 text-3xl font-bold text-slate-900">
-              {bestScore !== null
-                ? bestScore.toFixed(0)
-                : "–"}
-            </p>
-          </div>
+  {bestResult ? (
+    <>
+      <p className="mt-2 text-3xl font-bold text-slate-900">
+        {Number(bestResult.total_score).toFixed(0)}
+      </p>
+
+      <p className="mt-1 text-sm text-slate-600">
+        {bestResult.actual_shots} Schüsse · Ø{" "}
+         {Number(bestResult.average_score).toFixed(2)} · {" "}
+         {formatDate(bestResult.date)}
+      </p>
+
+   
+    </>
+  ) : (
+    <p className="mt-2 text-3xl font-bold text-slate-900">
+      –
+    </p>
+  )}
+</div>
         </section>
 
         <section className="mt-8">

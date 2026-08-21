@@ -46,6 +46,7 @@ export default function NewResultPage() {
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState("");
   const [showManualInput, setShowManualInput] = useState(false);
+
   const [shootingDate, setShootingDate] = useState(() => {
   const now = new Date();
   const offset = now.getTimezoneOffset();
@@ -61,6 +62,12 @@ const [shootingRangeId, setShootingRangeId] = useState("");
 const [favoriteShootingRangeIds, setFavoriteShootingRangeIds] =
   useState<string[]>([]);
   const [shootingRangeSearch, setShootingRangeSearch] = useState("");
+  const [showResultDetails, setShowResultDetails] = useState(true);
+  const resultComplete =
+  inputType === "individual" &&
+  shotMode === "fixed" &&
+  plannedShots > 0 &&
+  shots.length >= plannedShots;
 
   useEffect(() => {
   async function loadData() {
@@ -204,6 +211,10 @@ const totalScore = useMemo(
   setSelectedX(null);
   setSelectedY(null);
   setSelectedScore(null);
+
+ 
+  setShowResultDetails(false);
+
 }
 function handleTargetClick(
   event: React.MouseEvent<HTMLDivElement>
@@ -286,9 +297,13 @@ function getPositionLabel(
 
   return "rechts unten";
 }
-  function removeLastShot() {
-    setShots((current) => current.slice(0, -1));
-  }
+function removeLastShot() {
+  setShots((current) => current.slice(0, -1));
+
+  setSelectedX(null);
+  setSelectedY(null);
+  setSelectedScore(null);
+}
 
   async function loadWeather() {
   if (!shootingRangeId || !shootingDate) {
@@ -348,7 +363,7 @@ function getPositionLabel(
   };
 }
 
-  async function saveResult() {
+  async function saveResult(saveAndNext = false) {
     setMessage("");
 
     const {
@@ -483,7 +498,34 @@ weather_code: weather?.weatherCode ?? null,
       }
     }
 
-    router.push("/results");
+    if (saveAndNext) {
+  setShots([]);
+  setSelectedX(null);
+  setSelectedY(null);
+  setSelectedScore(null);
+
+  setTotalOnlyScore("");
+  setNotes("");
+
+  const now = new Date();
+  const offset = now.getTimezoneOffset();
+  const localDate = new Date(
+    now.getTime() - offset * 60 * 1000
+  );
+
+  setShootingDate(
+    localDate.toISOString().slice(0, 16)
+  );
+
+  setMessage("Resultat gespeichert. Nächstes Resultat kann erfasst werden.");
+  setSaving(false);
+
+  setShowResultDetails(false);
+
+  return;
+}
+
+router.push("/results");
   }
   const searchedShootingRanges = shootingRanges.filter((range) => {
   const search = shootingRangeSearch.trim().toLowerCase();
@@ -535,6 +577,45 @@ weather_code: weather?.weatherCode ?? null,
         </h1>
 
         <div className="mt-8 rounded-2xl border bg-white p-6 shadow-sm">
+        <div className="mb-6 flex items-center justify-between">
+  <div>
+    <h2 className="font-bold text-slate-900">
+      Angaben zum Resultat
+    </h2>
+
+    {!showResultDetails && (
+      <p className="mt-1 text-sm text-slate-500">
+        {discipline}
+        {shootingRangeId
+          ? ` · ${
+              shootingRanges.find(
+                (item) => item.id === shootingRangeId
+              )?.name ?? ""
+            }`
+          : ""}
+        {equipmentId
+          ? ` · ${
+              equipment.find(
+                (item) => item.id === equipmentId
+              )?.name ?? ""
+            }`
+          : ""}
+      </p>
+    )}
+  </div>
+
+  <button
+    type="button"
+    onClick={() =>
+      setShowResultDetails((current) => !current)
+    }
+    className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700"
+  >
+    {showResultDetails ? "▲ Einklappen" : "▼ Anzeigen"}
+  </button>
+</div>
+{showResultDetails && (
+  <>
           <div className="grid gap-5 md:grid-cols-2">
             <div>
               <label className="mb-2 block text-sm font-medium text-slate-700">
@@ -686,8 +767,13 @@ weather_code: weather?.weatherCode ?? null,
             </div>
           </div>
 
+           </>
+      )}
+
           {inputType === "individual" ? (
             <>
+            {showResultDetails && (
+  <>
               <div className="mt-6">
                 <p className="mb-3 text-sm font-medium text-slate-700">
                   Schussmodus
@@ -731,18 +817,34 @@ weather_code: weather?.weatherCode ?? null,
                   />
                 </div>
               )}
-<div className="mt-8 border-t pt-6">
-  <div className="flex items-center justify-between">
+               </>
+    )}
+         
+    <div className="mt-8 border-t pt-6">
+<div className="flex items-start justify-between gap-4">
+  <div>
     <h2 className="text-xl font-bold text-slate-900">
       Schüsse erfassen
     </h2>
 
-    <span className="text-sm text-slate-500">
+    <p className="mt-1 text-sm text-slate-500">
       {shotMode === "fixed"
-        ? `${shots.length} / ${plannedShots}`
+        ? `${shots.length} / ${plannedShots} Schüsse`
         : `${shots.length} Schüsse`}
-    </span>
+    </p>
   </div>
+
+  {shots.length > 0 && (
+    <button
+      type="button"
+      onClick={removeLastShot}
+      className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
+    >
+      ↶ Letzten Schuss entfernen
+    </button>
+  )}
+</div>
+
 
 <div className="mt-6">
   <p className="mb-3 text-sm font-medium text-slate-700">
@@ -751,18 +853,27 @@ weather_code: weather?.weatherCode ?? null,
       (optional)
     </span>
   </p>
-
+  <div
+  style={{
+    pointerEvents: resultComplete ? "none" : "auto",
+    opacity: resultComplete ? 0.65 : 1,
+  }}
+>
 <Target
   selectedX={selectedX}
   selectedY={selectedY}
   selectedScore={selectedScore}
   onSelect={(x, y, score) => {
-    setSelectedX(x);
-    setSelectedY(y);
-    setSelectedScore(score);
-  }}
-/>
+  if (resultComplete) {
+    return;
+  }
 
+  setSelectedX(x);
+  setSelectedY(y);
+  setSelectedScore(score);
+}}
+/>
+</div>
 {selectedX !== null &&
 selectedY !== null &&
 selectedScore !== null ? (
@@ -881,7 +992,7 @@ selectedScore !== null ? (
     {shots.map((shot, index) => (
       <span
         key={index}
-        className="rounded-full bg-slate-100 px-3 py-1 text-sm"
+        className="rounded-lg bg-slate-100 px-3 py-2  text-slate-900"
       >
         {index + 1}: {shot.score}
         {shot.x !== null && shot.y !== null && " 🎯"}
@@ -894,7 +1005,7 @@ selectedScore !== null ? (
       <p className="text-sm text-slate-500">
         Schüsse
       </p>
-      <p className="text-2xl font-bold">
+      <p className="text-2xl font-bold text-slate-900">
         {shots.length}
       </p>
     </div>
@@ -903,7 +1014,7 @@ selectedScore !== null ? (
       <p className="text-sm text-slate-500">
         Total
       </p>
-      <p className="text-2xl font-bold">
+      <p className="text-2xl font-bold text-slate-900">
         {totalScore}
       </p>
     </div>
@@ -912,23 +1023,57 @@ selectedScore !== null ? (
       <p className="text-sm text-slate-500">
         Durchschnitt
       </p>
-      <p className="text-2xl font-bold">
+      <p className="text-2xl font-bold text-slate-900">
         {averageScore.toFixed(2)}
       </p>
     </div>
-  </div>
+   </div>
 
-  <button
-    type="button"
-    onClick={removeLastShot}
-    disabled={shots.length === 0}
-   className="mt-5 rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-40"
-  >
-    Letzten Schuss entfernen
-  </button>
+  {resultComplete && (
+    <div className="mt-6 rounded-xl border border-green-200 bg-green-50 p-5">
+      <p className="text-lg font-bold text-slate-900">
+        ✓ Resultaterfassung abgeschlossen
+      </p>
+
+      <p className="mt-1 text-sm text-slate-600">
+        Alle {plannedShots} Schüsse wurden erfasst.
+      </p>
+
+      <div className="mt-5 flex flex-col gap-3 sm:flex-row">
+        <button
+          type="button"
+          onClick={removeLastShot}
+          className="rounded-lg border border-slate-300 bg-white px-4 py-3 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+        >
+          ↶ Letzten Schuss entfernen
+        </button>
+
+        <button
+          type="button"
+          onClick={() => saveResult(false)}
+          disabled={saving}
+          className="rounded-lg bg-red-600 px-4 py-3 text-sm font-semibold text-white hover:bg-red-700 disabled:opacity-50"
+        >
+          {saving
+            ? "Wird gespeichert..."
+            : "Resultat speichern"}
+        </button>
+        <button
+  type="button"
+  onClick={() => saveResult(true)}
+  disabled={saving}
+  className="rounded-lg border border-red-600 bg-white px-4 py-3 text-sm font-semibold text-red-600 hover:bg-red-50 disabled:opacity-50"
+>
+  {saving
+    ? "Wird gespeichert..."
+    : "Speichern & nächstes Resultat"}
+</button>
+      </div>
+    </div>
+  )}
 </div>
 </>
-          ) : (
+) : (
             <div className="mt-6 grid gap-5 sm:grid-cols-2">
               <div>
                 <label className="mb-2 block text-sm font-medium text-slate-700">
@@ -983,14 +1128,7 @@ selectedScore !== null ? (
             </div>
           )}
 
-          <button
-            type="button"
-            onClick={saveResult}
-            disabled={saving}
-            className="mt-6 w-full rounded-lg bg-red-600 px-5 py-3 font-semibold text-white disabled:opacity-50"
-          >
-            {saving ? "Wird gespeichert..." : "Resultat speichern"}
-          </button>
+          
         </div>
       </div>
     </main>

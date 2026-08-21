@@ -1,4 +1,5 @@
 "use client";
+import { useRef, useState } from "react";
 
 type TargetProps = {
   selectedX: number | null;
@@ -19,6 +20,32 @@ export default function Target({
   onSelect,
   readOnly = false,
 }: TargetProps) {
+    const [zoom, setZoom] = useState(1);
+    const scrollRef = useRef<HTMLDivElement | null>(null);
+
+const targetSize = 300 * zoom;
+
+function changeZoom(nextZoom: number) {
+  const clampedZoom = Math.max(1, Math.min(3, nextZoom));
+
+  setZoom(clampedZoom);
+
+  requestAnimationFrame(() => {
+    const container = scrollRef.current;
+
+    if (!container) {
+      return;
+    }
+
+    const size = 300 * clampedZoom;
+
+    container.scrollLeft =
+      (size - container.clientWidth) / 2;
+
+    container.scrollTop =
+      (size - container.clientHeight) / 2;
+  });
+}
   function handleTargetClick(
     event: React.MouseEvent<HTMLDivElement>
   ) {
@@ -57,19 +84,64 @@ export default function Target({
   }
 
   return (
+  <div>
+    <div className="mb-3 flex items-center justify-center gap-2">
+    <button
+  type="button"
+  onClick={() => changeZoom(zoom - 0.5)}
+  className="rounded-lg border border-slate-300 bg-white px-3 py-2 font-medium text-slate-700"
+>
+  −
+</button>
+
+      <span className="min-w-14 text-center text-sm font-medium text-slate-700">
+        {zoom}×
+      </span>
+
+    <button
+  type="button"
+  onClick={() => changeZoom(zoom + 0.5)}
+  className="rounded-lg border border-slate-300 bg-white px-3 py-2 font-medium text-slate-700"
+>
+  +
+</button>
+
+     {zoom > 1 && (
+  <button
+    type="button"
+    onClick={() => changeZoom(1)}
+    className="ml-2 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700"
+  >
+    1×
+  </button>
+)}
+    </div>
+
     <div
-      onClick={handleTargetClick}
-      style={{
-        position: "relative",
-        width: "300px",
-        height: "300px",
-        margin: "20px auto",
-        borderRadius: "50%",
-        backgroundColor: "white",
-        overflow: "hidden",
-        cursor: readOnly ? "default" : "crosshair",
-      }}
-    >
+    ref={scrollRef}
+  style={{
+    width: "300px",
+    height: "300px",
+    margin: "0 auto",
+    overflow: "auto",
+    borderRadius: "12px",
+    position: "relative",
+  }}
+>
+      <div
+        onClick={handleTargetClick}
+        style={{
+          position: "relative",
+          width: `${targetSize}px`,
+          height: `${targetSize}px`,
+          
+          flexShrink: 0,
+          borderRadius: "50%",
+          backgroundColor: "white",
+          overflow: "hidden",
+          cursor: readOnly ? "default" : "crosshair",
+        }}
+      >
       {/* Dunkler Bereich 3 bis 10 */}
       <div
         style={{
@@ -190,6 +262,8 @@ export default function Target({
             {selectedScore}
           </div>
         )}
+    </div>
+    </div>
     </div>
   );
 }

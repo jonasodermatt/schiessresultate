@@ -10,7 +10,8 @@ export default function ProfilePage() {
 
   const [email, setEmail] = useState("");
   const [displayName, setDisplayName] = useState("");
-  const [club, setClub] = useState("");
+  const [clubs, setClubs] = useState<string[]>([]);
+const [newClub, setNewClub] = useState("");
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -31,7 +32,7 @@ export default function ProfilePage() {
 
       const { data, error } = await supabase
         .from("profiles")
-        .select("display_name, club")
+        .select("display_name, clubs")
         .eq("user_id", user.id)
         .maybeSingle();
 
@@ -45,7 +46,7 @@ export default function ProfilePage() {
 
       if (data) {
         setDisplayName(data.display_name ?? "");
-        setClub(data.club ?? "");
+        setClubs(data.clubs ?? []);
       }
 
       setLoading(false);
@@ -53,6 +54,29 @@ export default function ProfilePage() {
 
     loadProfile();
   }, [router]);
+
+  function addClub() {
+  const value = newClub.trim();
+
+  if (!value) {
+    return;
+  }
+
+  if (clubs.includes(value)) {
+    setMessage("Dieser Verein ist bereits eingetragen.");
+    return;
+  }
+
+  setClubs((current) => [...current, value]);
+  setNewClub("");
+  setMessage("");
+}
+
+function removeClub(index: number) {
+  setClubs((current) =>
+    current.filter((_, currentIndex) => currentIndex !== index)
+  );
+}
 
   async function handleSubmit(
     event: FormEvent<HTMLFormElement>
@@ -77,7 +101,7 @@ export default function ProfilePage() {
         {
           user_id: user.id,
           display_name: displayName.trim() || null,
-          club: club.trim() || null,
+          clubs,
           updated_at: new Date().toISOString(),
         },
         {
@@ -184,20 +208,59 @@ export default function ProfilePage() {
               />
             </div>
 
-            <div className="mt-5">
-              <label className="mb-2 block text-sm font-medium text-slate-700">
-                Verein
-              </label>
+           <div className="mt-5">
+  <label className="mb-2 block text-sm font-medium text-slate-700">
+    Vereine
+  </label>
 
-              <input
-                value={club}
-                onChange={(event) =>
-                  setClub(event.target.value)
-                }
-                placeholder="z.B. Schützenverein Muster"
-                className="w-full rounded-lg border border-slate-300 px-4 py-3 text-slate-900"
-              />
-            </div>
+  {clubs.length > 0 && (
+    <div className="mb-3 space-y-2">
+      {clubs.map((club, index) => (
+        <div
+          key={`${club}-${index}`}
+          className="flex items-center justify-between rounded-lg border border-slate-200 bg-slate-50 px-4 py-3"
+        >
+          <span className="text-sm text-slate-900">
+            {club}
+          </span>
+
+          <button
+            type="button"
+            onClick={() => removeClub(index)}
+            className="text-sm font-medium text-red-600"
+          >
+            Entfernen
+          </button>
+        </div>
+      ))}
+    </div>
+  )}
+
+  <div className="flex gap-2">
+    <input
+      value={newClub}
+      onChange={(event) =>
+        setNewClub(event.target.value)
+      }
+      onKeyDown={(event) => {
+        if (event.key === "Enter") {
+          event.preventDefault();
+          addClub();
+        }
+      }}
+      placeholder="z.B. Schützenverein Muster"
+      className="min-w-0 flex-1 rounded-lg border border-slate-300 px-4 py-3 text-slate-900"
+    />
+
+    <button
+      type="button"
+      onClick={addClub}
+      className="rounded-lg border border-slate-300 bg-white px-4 py-3 font-medium text-slate-700"
+    >
+      + Hinzufügen
+    </button>
+  </div>
+</div>
 
             <button
               type="submit"
