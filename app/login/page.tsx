@@ -69,7 +69,7 @@ export default function LoginPage() {
       <div className="mx-auto max-w-md">
         <div className="mb-8 text-center">
           <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-red-600 text-2xl text-white">
-            ◎
+            ◎ Easyshooter
           </div>
 
           <h1 className="text-3xl font-bold text-slate-900">

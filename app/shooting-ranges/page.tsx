@@ -448,7 +448,7 @@ function renderShootingRange(item: ShootingRange) {
             href="/dashboard"
             className="font-bold text-slate-900"
           >
-            ◎ Schiessresultate
+            ◎ Easyshooter
           </Link>
 
           <Link

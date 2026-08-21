@@ -474,7 +474,7 @@ router.push(`/results/${id}`);
             href="/dashboard"
             className="font-bold text-slate-900"
           >
-            ◎ Schiessresultate
+            ◎ Easyshooter
           </Link>
 
           <Link

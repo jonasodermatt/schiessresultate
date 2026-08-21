@@ -305,7 +305,7 @@ function getWindDirection(degrees: number | null) {
                 href="/dashboard"
                 className="font-bold text-slate-900"
               >
-                ◎ Schiessresultate
+                ◎ Easyshooter
               </Link>
 
               <Link

@@ -59,7 +59,7 @@ export default function UpdatePasswordPage() {
       <div className="w-full max-w-md rounded-2xl border bg-white p-6 shadow-sm">
         <div className="text-center">
           <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-red-600 text-xl text-white">
-            ◎
+            ◎ Easyshooter
           </div>
 
           <h1 className="mt-4 text-2xl font-bold text-slate-900">

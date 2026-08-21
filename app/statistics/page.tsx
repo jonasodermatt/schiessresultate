@@ -176,7 +176,7 @@ export default function StatisticsPage() {
             href="/dashboard"
             className="font-bold text-slate-900"
           >
-            ◎ Schiessresultate
+            ◎ Easyshooter
           </Link>
 
           <Link

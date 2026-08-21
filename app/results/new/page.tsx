@@ -505,7 +505,7 @@ weather_code: weather?.weatherCode ?? null,
             href="/dashboard"
             className="font-bold text-slate-900"
           >
-            ◎ Schiessresultate
+            ◎ Easyshooter
           </Link>
 
           <Link

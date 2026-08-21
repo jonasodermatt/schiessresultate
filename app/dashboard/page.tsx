@@ -111,7 +111,7 @@ export default function DashboardPage() {
 
             <div>
               <p className="font-bold text-slate-900">
-                Schiessresultate
+                Easyshooter
               </p>
 
               <p className="hidden text-xs text-slate-500 sm:block">
