@@ -67,10 +67,23 @@ export default function LoginPage() {
   return (
     <main className="min-h-screen bg-slate-50 px-6 py-16">
       <div className="mx-auto max-w-md">
-        <div className="mb-8 text-center">
-          <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-red-600 text-2xl text-white">
-            ◎ Easyshooter
-          </div>
+   <div className="flex items-center justify-center gap-3">
+    <div className="flex h-10 w-10 items-center justify-center rounded-full bg-red-600 text-xl text-white">
+      ◎
+    </div>
+
+    <div>
+      <p className="text-xl font-bold text-slate-900">
+        EasyShooter
+      </p>
+
+    
+    </div>
+  </div>
+
+  <div className="mt-8 text-center">
+ 
+ 
 
           <h1 className="text-3xl font-bold text-slate-900">
             Einloggen

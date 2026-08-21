@@ -172,12 +172,24 @@ export default function StatisticsPage() {
     <main className="min-h-screen bg-slate-50">
       <header className="border-b bg-white">
         <div className="mx-auto flex max-w-6xl items-center justify-between px-5 py-4">
-          <Link
-            href="/dashboard"
-            className="font-bold text-slate-900"
-          >
-            ◎ Easyshooter
-          </Link>
+           <Link
+      href="/dashboard"
+      className="flex items-center gap-3"
+    >
+      <div className="flex h-10 w-10 items-center justify-center rounded-full bg-red-600 text-xl text-white">
+        ◎
+      </div>
+
+      <div>
+        <p className="font-bold text-slate-900">
+          EasyShooter
+        </p>
+
+        <p className="hidden text-xs text-slate-500 sm:block">
+          Deine Resultate. Deine Entwicklung.
+        </p>
+      </div>
+    </Link>
 
           <Link
             href="/dashboard"

@@ -11,7 +11,7 @@ export default function Home() {
 
             <div>
               <h1 className="text-xl font-bold text-slate-900">
-                Easyshooter
+                EasyShooter
               </h1>
               <p className="text-xs text-slate-500">
                 Deine Resultate. Deine Entwicklung.
