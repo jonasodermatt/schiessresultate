@@ -22,7 +22,7 @@ export default function EquipmentPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState("");
-
+  const [editingId, setEditingId] = useState<string | null>(null);
   const [name, setName] = useState("");
   const [category, setCategory] = useState("Gewehr");
   const [manufacturer, setManufacturer] = useState("");
@@ -60,6 +60,68 @@ export default function EquipmentPage() {
   useEffect(() => {
     loadEquipment();
   }, [loadEquipment]);
+  function startEdit(item: Equipment) {
+  setEditingId(item.id);
+
+  setName(item.name);
+  setCategory(item.category || "Gewehr");
+  setManufacturer(item.manufacturer ?? "");
+  setModel(item.model ?? "");
+  setSerialNumber(item.serial_number ?? "");
+  setNotes(item.notes ?? "");
+
+  setMessage("");
+}
+async function deactivateEquipment(item: Equipment) {
+  const confirmed = window.confirm(
+    `Möchtest du "${item.name}" wirklich deaktivieren?`
+  );
+
+  if (!confirmed) {
+    return;
+  }
+
+  setMessage("");
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    router.replace("/login");
+    return;
+  }
+
+  const { error } = await supabase
+    .from("equipment")
+    .update({
+      active: false,
+    })
+    .eq("id", item.id)
+    .eq("user_id", user.id);
+
+  if (error) {
+    setMessage(
+      `Sportgerät konnte nicht deaktiviert werden: ${error.message}`
+    );
+    return;
+  }
+
+  // Falls gerade dieses Sportgerät bearbeitet wird
+  if (editingId === item.id) {
+    setEditingId(null);
+    setName("");
+    setCategory("Gewehr");
+    setManufacturer("");
+    setModel("");
+    setSerialNumber("");
+    setNotes("");
+  }
+
+  setMessage(`"${item.name}" wurde deaktiviert.`);
+
+  await loadEquipment();
+}
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -76,7 +138,27 @@ export default function EquipmentPage() {
       return;
     }
 
-    const { error } = await supabase.from("equipment").insert({
+    let error;
+
+if (editingId) {
+  const { error: updateError } = await supabase
+    .from("equipment")
+    .update({
+      name,
+      category,
+      manufacturer: manufacturer || null,
+      model: model || null,
+      serial_number: serialNumber || null,
+      notes: notes || null,
+    })
+    .eq("id", editingId)
+    .eq("user_id", user.id);
+
+  error = updateError;
+} else {
+  const { error: insertError } = await supabase
+    .from("equipment")
+    .insert({
       user_id: user.id,
       name,
       category,
@@ -87,11 +169,19 @@ export default function EquipmentPage() {
       active: true,
     });
 
+  error = insertError;
+}
+
     if (error) {
       setMessage(`Fehler beim Speichern: ${error.message}`);
       setSaving(false);
       return;
     }
+       setMessage(
+  editingId
+    ? "Sportgerät wurde aktualisiert."
+    : "Sportgerät wurde gespeichert."
+);
 
     setName("");
     setCategory("Gewehr");
@@ -99,8 +189,8 @@ export default function EquipmentPage() {
     setModel("");
     setSerialNumber("");
     setNotes("");
+    setEditingId(null);
 
-    setMessage("Sportgerät wurde gespeichert.");
 
     await loadEquipment();
     setSaving(false);
@@ -200,14 +290,23 @@ export default function EquipmentPage() {
                       </p>
                     )}
 
-                    <div className="mt-5 border-t pt-4">
-                      <button
-                        type="button"
-                        className="text-sm font-semibold text-red-600"
-                      >
-                        Einstellungen
-                      </button>
-                    </div>
+               <div className="mt-5 flex gap-4 border-t pt-4">
+  <button
+    type="button"
+    onClick={() => startEdit(item)}
+    className="text-sm font-semibold text-slate-700"
+  >
+    ✏️ Bearbeiten
+  </button>
+
+  <button
+    type="button"
+    onClick={() => deactivateEquipment(item)}
+    className="text-sm font-semibold text-red-600"
+  >
+    🗑️ Löschen
+  </button>
+</div>
                   </div>
                 ))}
               </div>
@@ -240,15 +339,18 @@ export default function EquipmentPage() {
                     Kategorie *
                   </label>
 
-                  <select
-                    value={category}
-                    onChange={(event) => setCategory(event.target.value)}
-                    className="w-full rounded-lg border border-slate-300 bg-white px-4 py-3 text-slate-900"
-                  >
-                    <option>Gewehr</option>
-                    <option>Pistole</option>
-                    <option>Andere</option>
-                  </select>
+            <select
+  value={category}
+  onChange={(event) => setCategory(event.target.value)}
+  className="w-full rounded-lg border border-slate-300 bg-white px-4 py-3 text-slate-900"
+>
+<option>Armbrust</option>
+  <option>Bogen</option>
+  <option>Gewehr</option>
+  <option>Pistole</option>
+  
+  <option>Andere</option>
+</select>
                 </div>
 
                 <div className="grid gap-4 sm:grid-cols-2">

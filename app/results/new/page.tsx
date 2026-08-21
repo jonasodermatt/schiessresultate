@@ -72,7 +72,24 @@ const [favoriteShootingRangeIds, setFavoriteShootingRangeIds] =
       router.replace("/login");
       return;
     }
+    // Letztes Resultat laden
+const { data: lastResult, error: lastResultError } =
+  await supabase
+    .from("results")
+    .select("discipline, equipment_id, shooting_range_id")
+    .eq("user_id", user.id)
+    .order("date", { ascending: false })
+    .limit(1)
+    .maybeSingle();
 
+if (lastResultError) {
+  console.error(
+    "Letztes Resultat konnte nicht geladen werden:",
+    lastResultError.message
+  );
+}if (lastResult?.discipline) {
+  setDiscipline(lastResult.discipline);
+}
     // Sportgeräte laden
     const { data: equipmentData, error: equipmentError } =
       await supabase
@@ -88,9 +105,17 @@ const [favoriteShootingRangeIds, setFavoriteShootingRangeIds] =
 
     setEquipment(equipmentData ?? []);
 
-    if (equipmentData && equipmentData.length > 0) {
-      setEquipmentId(equipmentData[0].id);
-    }
+   if (equipmentData && equipmentData.length > 0) {
+  const lastEquipmentStillExists = equipmentData.some(
+    (item) => item.id === lastResult?.equipment_id
+  );
+
+  if (lastEquipmentStillExists && lastResult?.equipment_id) {
+    setEquipmentId(lastResult.equipment_id);
+  } else {
+    setEquipmentId(equipmentData[0].id);
+  }
+}
 
     // Schiessstände laden
     const {
@@ -129,12 +154,19 @@ setFavoriteShootingRangeIds(
     (favorite) => favorite.shooting_range_id
   )
 );
-    if (
-      shootingRangeData &&
-      shootingRangeData.length > 0
-    ) {
-      setShootingRangeId(shootingRangeData[0].id);
-    }
+if (
+  lastResult?.shooting_range_id &&
+  shootingRangeData?.some(
+    (range) =>
+      range.id === lastResult.shooting_range_id
+  )
+) {
+  setShootingRangeId(
+    lastResult.shooting_range_id
+  );
+} else {
+  setShootingRangeId("");
+}
   }
 
   loadData();
@@ -493,20 +525,20 @@ weather_code: weather?.weatherCode ?? null,
         <div className="mt-8 rounded-2xl border bg-white p-6 shadow-sm">
           <div className="grid gap-5 md:grid-cols-2">
             <div>
-              <label className="mb-2 block text-sm font-medium">
+              <label className="mb-2 block text-sm font-medium text-slate-700">
                 Disziplin
               </label>
 
               <input
                 value={discipline}
                 onChange={(e) => setDiscipline(e.target.value)}
-                className="w-full rounded-lg border px-4 py-3"
+                className="w-full rounded-lg border border-slate-300 bg-white px-4 py-3 text-slate-900 placeholder:text-slate-400"
               />
             </div>
                         <div className="mt-5 max-w-xs">
   <label
     htmlFor="shootingDate"
-    className="mb-2 block text-sm font-medium"
+    className="mb-2 block text-sm font-medium text-slate-700"
   >
     Datum
   </label>
@@ -516,18 +548,18 @@ weather_code: weather?.weatherCode ?? null,
   type="datetime-local"
   value={shootingDate}
   onChange={(e) => setShootingDate(e.target.value)}
-  className="w-full rounded-lg border px-4 py-3"
+  className="w-full rounded-lg border border-slate-300 bg-white px-4 py-3 text-slate-900"
 />
 </div>
 <div>
-  <label className="mb-2 block text-sm font-medium">
+  <label className="mb-2 block text-sm font-medium text-slate-700">
     Schiessstand
   </label>
 
   <select
     value={shootingRangeId}
     onChange={(e) => setShootingRangeId(e.target.value)}
-    className="w-full rounded-lg border bg-white px-4 py-3"
+    className="w-full rounded-lg border border-slate-300 bg-white px-4 py-3 text-slate-900"
   >
     <option value="">Kein Schiessstand</option>
     {shootingRangeId &&
@@ -592,14 +624,14 @@ weather_code: weather?.weatherCode ?? null,
   
 </div>
             <div>
-              <label className="mb-2 block text-sm font-medium">
+              <label className="mb-2 block text-sm font-medium text-slate-700">
                 Sportgerät
               </label>
 
               <select
                 value={equipmentId}
                 onChange={(e) => setEquipmentId(e.target.value)}
-                className="w-full rounded-lg border bg-white px-4 py-3"
+                className="w-full rounded-lg border border-slate-300 bg-white px-4 py-3 text-slate-900"
               >
                 {equipment.length === 0 && (
                   <option value="">
@@ -617,12 +649,12 @@ weather_code: weather?.weatherCode ?? null,
           </div>
 
           <div className="mt-6">
-            <p className="mb-3 text-sm font-medium">
+            <p className="mb-3 text-sm font-medium text-slate-700">
               Eingabeart
             </p>
 
             <div className="flex gap-6">
-              <label>
+              <label className="text-slate-900">
                 <input
                   type="radio"
                   checked={inputType === "individual"}
@@ -631,7 +663,7 @@ weather_code: weather?.weatherCode ?? null,
                 Einzelschüsse
               </label>
 
-              <label>
+              <label className="text-slate-900">
                 <input
                   type="radio"
                   checked={inputType === "total"}
@@ -645,12 +677,12 @@ weather_code: weather?.weatherCode ?? null,
           {inputType === "individual" ? (
             <>
               <div className="mt-6">
-                <p className="mb-3 text-sm font-medium">
+                <p className="mb-3 text-sm font-medium text-slate-700">
                   Schussmodus
                 </p>
 
                 <div className="flex flex-wrap gap-6">
-                  <label>
+                  <label className="text-slate-900">
                     <input
                       type="radio"
                       checked={shotMode === "fixed"}
@@ -659,7 +691,7 @@ weather_code: weather?.weatherCode ?? null,
                     Feste Anzahl
                   </label>
 
-                  <label>
+                  <label className="text-slate-900">
                     <input
                       type="radio"
                       checked={shotMode === "free"}
@@ -672,7 +704,7 @@ weather_code: weather?.weatherCode ?? null,
 
               {shotMode === "fixed" && (
                 <div className="mt-5 max-w-xs">
-                  <label className="mb-2 block text-sm font-medium">
+                  <label className="mb-2 block text-sm font-medium text-slate-700">
                     Anzahl Schüsse
                   </label>
 
@@ -683,13 +715,13 @@ weather_code: weather?.weatherCode ?? null,
                     onChange={(e) =>
                       setPlannedShots(Number(e.target.value))
                     }
-                    className="w-full rounded-lg border px-4 py-3"
+                    className="w-full rounded-lg border border-slate-300 bg-white px-4 py-3 text-slate-900"
                   />
                 </div>
               )}
 <div className="mt-8 border-t pt-6">
   <div className="flex items-center justify-between">
-    <h2 className="text-xl font-bold">
+    <h2 className="text-xl font-bold text-slate-900">
       Schüsse erfassen
     </h2>
 
@@ -878,7 +910,7 @@ selectedScore !== null ? (
     type="button"
     onClick={removeLastShot}
     disabled={shots.length === 0}
-    className="mt-5 rounded-lg border px-4 py-2 text-sm disabled:opacity-40"
+   className="mt-5 rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-40"
   >
     Letzten Schuss entfernen
   </button>
@@ -887,7 +919,7 @@ selectedScore !== null ? (
           ) : (
             <div className="mt-6 grid gap-5 sm:grid-cols-2">
               <div>
-                <label className="mb-2 block text-sm font-medium">
+                <label className="mb-2 block text-sm font-medium text-slate-700">
                   Anzahl Schüsse
                 </label>
 
@@ -898,12 +930,12 @@ selectedScore !== null ? (
                   onChange={(e) =>
                     setTotalOnlyShots(Number(e.target.value))
                   }
-                  className="w-full rounded-lg border px-4 py-3"
+                  className="w-full rounded-lg border border-slate-300 bg-white px-4 py-3 text-slate-900"
                 />
               </div>
 
               <div>
-                <label className="mb-2 block text-sm font-medium">
+                <label className="mb-2 block text-sm font-medium text-slate-700">
                   Total
                 </label>
 
@@ -914,14 +946,14 @@ selectedScore !== null ? (
                   onChange={(e) =>
                     setTotalOnlyScore(e.target.value)
                   }
-                  className="w-full rounded-lg border px-4 py-3"
+                  className="w-full rounded-lg border border-slate-300 bg-white px-4 py-3 text-slate-900"
                 />
               </div>
             </div>
           )}
 
           <div className="mt-6">
-            <label className="mb-2 block text-sm font-medium">
+            <label className="mb-2 block text-sm font-medium text-slate-700">
               Notiz
             </label>
 
@@ -929,7 +961,7 @@ selectedScore !== null ? (
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
               rows={3}
-              className="w-full rounded-lg border px-4 py-3"
+              className="w-full rounded-lg border border-slate-300 bg-white px-4 py-3 text-slate-900 placeholder:text-slate-400"
             />
           </div>
 
