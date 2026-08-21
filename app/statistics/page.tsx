@@ -19,7 +19,7 @@ type Result = {
   equipment_id: string | null;
   equipment: {
     name: string;
-  } | null;
+  }[];
 };
 
 type StatisticGroup = {
@@ -133,17 +133,20 @@ setLoading(false);
   const equipmentOptions = useMemo(() => {
   const map = new Map<string, string>();
 
-  for (const result of results) {
-    if (
-      result.equipment_id &&
-      result.equipment?.name
-    ) {
-      map.set(
-        result.equipment_id,
-        result.equipment.name
-      );
-    }
+for (const result of results) {
+  const equipmentName =
+    result.equipment?.[0]?.name;
+
+  if (
+    result.equipment_id &&
+    equipmentName
+  ) {
+    map.set(
+      result.equipment_id,
+      equipmentName
+    );
   }
+}
 
   return Array.from(map.entries())
     .map(([id, name]) => ({
