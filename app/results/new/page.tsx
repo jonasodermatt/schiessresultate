@@ -82,9 +82,7 @@ const showResultActions =
   ) {
     setShotMode(newMode);
 
-    if (newMode === "free") {
-      setPlannedShots("");
-    }
+ 
   }
 
   useEffect(() => {
