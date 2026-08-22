@@ -85,6 +85,46 @@ const showResultActions =
  
   }
 
+useEffect(() => {
+  let wakeLock: WakeLockSentinel | null = null;
+
+  async function requestWakeLock() {
+    try {
+      if ("wakeLock" in navigator) {
+        wakeLock = await navigator.wakeLock.request("screen");
+        console.log("Bildschirm bleibt während der Resultaterfassung aktiv.");
+      }
+    } catch (error) {
+      console.error("Wake Lock konnte nicht aktiviert werden:", error);
+    }
+  }
+
+  async function handleVisibilityChange() {
+    if (document.visibilityState === "visible") {
+      await requestWakeLock();
+    }
+  }
+
+  requestWakeLock();
+
+  document.addEventListener(
+    "visibilitychange",
+    handleVisibilityChange
+  );
+
+  return () => {
+    document.removeEventListener(
+      "visibilitychange",
+      handleVisibilityChange
+    );
+
+    if (wakeLock) {
+      wakeLock.release();
+      wakeLock = null;
+    }
+  };
+}, []);
+
   useEffect(() => {
   async function loadData() {
     const {
