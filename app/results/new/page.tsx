@@ -69,6 +69,24 @@ const [favoriteShootingRangeIds, setFavoriteShootingRangeIds] =
   plannedShots > 0 &&
   shots.length >= plannedShots;
 
+const showResultActions =
+  inputType === "individual" &&
+  shots.length > 0 &&
+  (
+    shotMode === "free" ||
+    resultComplete
+  );
+
+  function handleShotModeChange(
+    newMode: "fixed" | "free"
+  ) {
+    setShotMode(newMode);
+
+    if (newMode === "free") {
+      setPlannedShots("");
+    }
+  }
+
   useEffect(() => {
   async function loadData() {
     const {
@@ -784,7 +802,7 @@ router.push("/results");
                     <input
                       type="radio"
                       checked={shotMode === "fixed"}
-                      onChange={() => setShotMode("fixed")}
+                      onChange={() => handleShotModeChange("fixed")}
                     />{" "}
                     Feste Anzahl
                   </label>
@@ -793,7 +811,7 @@ router.push("/results");
                     <input
                       type="radio"
                       checked={shotMode === "free"}
-                      onChange={() => setShotMode("free")}
+                      onChange={() => handleShotModeChange("free")}
                     />{" "}
                     Freies Training
                   </label>
@@ -844,8 +862,8 @@ router.push("/results");
     </button>
   )}
 </div>
-
-
+{!resultComplete && (
+<>
 <div className="mt-6">
   <p className="mb-3 text-sm font-medium text-slate-700">
     Schussposition{" "}
@@ -854,11 +872,10 @@ router.push("/results");
     </span>
   </p>
   <div
-  style={{
-    pointerEvents: resultComplete ? "none" : "auto",
-    opacity: resultComplete ? 0.65 : 1,
-  }}
+
 >
+
+   
 <Target
   selectedX={selectedX}
   selectedY={selectedY}
@@ -938,6 +955,7 @@ selectedScore !== null ? (
   </p>
 )}
 </div>
+
  <div className="mt-6 text-center">
   <button
     type="button"
@@ -987,57 +1005,25 @@ selectedScore !== null ? (
     </div>
   )}
 </div>
+  </>
+)}
 
-  <div className="mt-6 flex flex-wrap gap-2">
-    {shots.map((shot, index) => (
-      <span
-        key={index}
-        className="rounded-lg bg-slate-100 px-3 py-2  text-slate-900"
-      >
-        {index + 1}: {shot.score}
-        {shot.x !== null && shot.y !== null && " 🎯"}
-      </span>
-    ))}
-  </div>
 
-  <div className="mt-6 grid gap-4 sm:grid-cols-3">
-    <div className="rounded-xl bg-slate-50 p-4">
-      <p className="text-sm text-slate-500">
-        Schüsse
-      </p>
-      <p className="text-2xl font-bold text-slate-900">
-        {shots.length}
-      </p>
-    </div>
-
-    <div className="rounded-xl bg-slate-50 p-4">
-      <p className="text-sm text-slate-500">
-        Total
-      </p>
-      <p className="text-2xl font-bold text-slate-900">
-        {totalScore}
-      </p>
-    </div>
-
-    <div className="rounded-xl bg-slate-50 p-4">
-      <p className="text-sm text-slate-500">
-        Durchschnitt
-      </p>
-      <p className="text-2xl font-bold text-slate-900">
-        {averageScore.toFixed(2)}
-      </p>
-    </div>
-   </div>
-
-  {resultComplete && (
+  {showResultActions && ( 
     <div className="mt-6 rounded-xl border border-green-200 bg-green-50 p-5">
       <p className="text-lg font-bold text-slate-900">
-        ✓ Resultaterfassung abgeschlossen
-      </p>
+  {shotMode === "fixed"
+    ? "✓ Resultaterfassung abgeschlossen"
+    : "✓ Resultaterfassung abschliessen"}
+</p>
 
-      <p className="mt-1 text-sm text-slate-600">
-        Alle {plannedShots} Schüsse wurden erfasst.
-      </p>
+<p className="mt-1 text-sm text-slate-600">
+  {shotMode === "fixed"
+    ? `Alle ${plannedShots} Schüsse wurden erfasst.`
+    : `${shots.length} Schüsse erfasst. Das Resultat kann gespeichert werden.`}
+</p>
+
+      
 
       <div className="mt-5 flex flex-col gap-3 sm:flex-row">
         <button
@@ -1108,6 +1094,53 @@ selectedScore !== null ? (
               </div>
             </div>
           )}
+
+
+  <div className="mt-6 flex flex-wrap gap-2">
+    {shots.map((shot, index) => (
+      <span
+        key={index}
+        className="rounded-lg bg-slate-100 px-3 py-2  text-slate-900"
+      >
+        {index + 1}: {shot.score}
+        {shot.x !== null && shot.y !== null && " 🎯"}
+      </span>
+    ))}
+  </div>
+
+
+
+
+  <div className="mt-6 grid gap-4 sm:grid-cols-3">
+    <div className="rounded-xl bg-slate-50 p-4">
+      <p className="text-sm text-slate-500">
+        Schüsse
+      </p>
+      <p className="text-2xl font-bold text-slate-900">
+        {shots.length}
+      </p>
+    </div>
+
+    <div className="rounded-xl bg-slate-50 p-4">
+      <p className="text-sm text-slate-500">
+        Total
+      </p>
+      <p className="text-2xl font-bold text-slate-900">
+        {totalScore}
+      </p>
+    </div>
+
+    <div className="rounded-xl bg-slate-50 p-4">
+      <p className="text-sm text-slate-500">
+        Durchschnitt
+      </p>
+      <p className="text-2xl font-bold text-slate-900">
+        {averageScore.toFixed(2)}
+      </p>
+    </div>
+   </div>
+
+
 
           <div className="mt-6">
             <label className="mb-2 block text-sm font-medium text-slate-700">

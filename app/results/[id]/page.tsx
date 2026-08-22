@@ -481,69 +481,30 @@ function getWindDirection(degrees: number | null) {
     shot.x_position !== null &&
     shot.y_position !== null
 ) && (
+ 
   <section className="mt-6 rounded-2xl border bg-white p-6">
-    <h2 className="text-lg font-bold text-slate-900">
-      Schussbild
-    </h2>
+  <h2 className="text-lg font-bold text-slate-900">
+    Schussbild
+  </h2>
 
-    <p className="mt-1 text-sm text-slate-500">
-      Alle Treffer mit gespeicherter Position.
-    </p>
+  <p className="mt-1 text-sm text-slate-500">
+    Alle Treffer mit gespeicherter Position.
+  </p>
 
-    <div
-      style={{
-        position: "relative",
-        width: "300px",
-        height: "300px",
-        margin: "24px auto 0",
-      }}
-    >
-   <Target
-  selectedX={null}
-  selectedY={null}
-  selectedScore={null}
-  readOnly
-/>
+  <div className="mt-6">
+    <Target
+      selectedX={null}
+      selectedY={null}
+      selectedScore={null}
+      readOnly
+      shots={shots}
+    />
+  </div>
 
-      {shots
-        .filter(
-          (shot) =>
-            shot.x_position !== null &&
-            shot.y_position !== null
-        )
-        .map((shot) => (
-          <div
-            key={shot.id}
-            title={`Schuss ${shot.shot_number}: ${shot.score}`}
-            style={{
-              position: "absolute",
-              left: `${((Number(shot.x_position) + 1) / 2) * 100}%`,
-              top: `${((1 - Number(shot.y_position)) / 2) * 100}%`,
-              width: "24px",
-              height: "24px",
-              transform: "translate(-50%, -50%)",
-              borderRadius: "50%",
-              backgroundColor: "#dc2626",
-              border: "2px solid white",
-              color: "white",
-              fontSize: "11px",
-              fontWeight: "bold",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              zIndex: 20,
-              pointerEvents: "none",
-            }}
-          >
-            {shot.shot_number}
-          </div>
-        ))}
-    </div>
-
-    <p className="mt-3 text-center text-xs text-slate-500">
-      Die Zahl im Treffer entspricht der Schussnummer.
-    </p>
-  </section>
+  <p className="mt-3 text-center text-xs text-slate-500">
+    Die Zahl im Treffer entspricht der Schussnummer.
+  </p>
+</section>
 
 )}
 <div className="mt-5 border-t pt-4">

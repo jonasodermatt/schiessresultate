@@ -56,13 +56,23 @@ export default function DashboardPage() {
       setResultCount(results.length);
 
       if (results.length > 0) {
-        const average =
-          results.reduce(
-            (sum, result) => sum + Number(result.average_score),
-            0
-          ) / results.length;
+       
+        const totalShots = results.reduce(
+  (sum, result) => sum + Number(result.actual_shots),
+  0
+);
 
-        setAverageScore(average);
+const totalPoints = results.reduce(
+  (sum, result) => sum + Number(result.total_score),
+  0
+);
+
+const average =
+  totalShots > 0
+    ? totalPoints / totalShots
+    : null;
+
+setAverageScore(average);
 
         const twelveMonthsAgo = new Date();
 twelveMonthsAgo.setMonth(twelveMonthsAgo.getMonth() - 12);

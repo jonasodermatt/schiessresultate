@@ -1,5 +1,14 @@
 "use client";
-import { useRef, useState } from "react";
+import { useLayoutEffect, useRef, useState } from "react";
+
+
+type TargetShot = {
+  id: string;
+  shot_number: number;
+  score: number;
+  x_position: number | null;
+  y_position: number | null;
+};
 
 type TargetProps = {
   selectedX: number | null;
@@ -11,14 +20,15 @@ type TargetProps = {
     score: number
   ) => void;
   readOnly?: boolean;
+  shots?: TargetShot[];
 };
-
 export default function Target({
   selectedX,
   selectedY,
   selectedScore,
   onSelect,
   readOnly = false,
+  shots = [],
 }: TargetProps) {
     const [zoom, setZoom] = useState(1);
     const scrollRef = useRef<HTMLDivElement | null>(null);
@@ -26,27 +36,29 @@ export default function Target({
 const targetSize = 300 * zoom;
 
 function changeZoom(nextZoom: number) {
-  const clampedZoom = Math.max(1, Math.min(3, nextZoom));
+  const clampedZoom = Math.max(
+    1,
+    Math.min(3, nextZoom)
+  );
 
   setZoom(clampedZoom);
-
-  requestAnimationFrame(() => {
-    const container = scrollRef.current;
-
-    if (!container) {
-      return;
-    }
-
-    const size = 300 * clampedZoom;
-
-    container.scrollLeft =
-      (size - container.clientWidth) / 2;
-
-    container.scrollTop =
-      (size - container.clientHeight) / 2;
-  });
 }
-  function handleTargetClick(
+
+useLayoutEffect(() => {
+  const container = scrollRef.current;
+
+  if (!container) {
+    return;
+  }
+
+  container.scrollLeft =
+    (container.scrollWidth - container.clientWidth) / 2;
+
+  container.scrollTop =
+    (container.scrollHeight - container.clientHeight) / 2;
+}, [zoom]);
+
+function handleTargetClick(
     event: React.MouseEvent<HTMLDivElement>
   ) {
       if (readOnly) {
@@ -106,15 +118,7 @@ function changeZoom(nextZoom: number) {
   +
 </button>
 
-     {zoom > 1 && (
-  <button
-    type="button"
-    onClick={() => changeZoom(1)}
-    className="ml-2 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700"
-  >
-    1×
-  </button>
-)}
+  
     </div>
 
     <div
@@ -233,6 +237,45 @@ function changeZoom(nextZoom: number) {
           );
         }
       )}
+
+{/* Gespeicherte Treffer */}
+{shots
+  .filter(
+    (shot) =>
+      shot.x_position !== null &&
+      shot.y_position !== null
+  )
+  .map((shot) => (
+    <div
+      key={shot.id}
+      title={`Schuss ${shot.shot_number}: ${shot.score}`}
+      style={{
+        position: "absolute",
+        left: `${
+          ((Number(shot.x_position) + 1) / 2) * 100
+        }%`,
+        top: `${
+          ((1 - Number(shot.y_position)) / 2) * 100
+        }%`,
+        width: "24px",
+        height: "24px",
+        transform: "translate(-50%, -50%)",
+        borderRadius: "50%",
+        backgroundColor: "#dc2626",
+        border: "2px solid white",
+        color: "white",
+        fontSize: "11px",
+        fontWeight: "bold",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        zIndex: 20,
+        pointerEvents: "none",
+      }}
+    >
+      {shot.shot_number}
+    </div>
+  ))}
 
       {/* Gewählter Treffer */}
       {selectedX !== null &&
