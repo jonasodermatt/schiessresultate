@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "../../lib/supabase";
+import { Language, useI18n } from "../../lib/i18n";
 
 type Result = {
   id: string;
@@ -16,6 +17,14 @@ type Result = {
 
 export default function DashboardPage() {
   const router = useRouter();
+  const { language, locale } = useI18n();
+  const words: Record<Language, { shots: string; from: string; result: string; results: string }> = {
+    de: { shots: "Schüsse", from: "aus", result: "Resultat", results: "Resultaten" },
+    fr: { shots: "coups", from: "sur", result: "résultat", results: "résultats" },
+    it: { shots: "colpi", from: "da", result: "risultato", results: "risultati" },
+    en: { shots: "shots", from: "from", result: "result", results: "results" },
+  };
+  const word = words[language];
   const [email, setEmail] = useState("");
   const [loading, setLoading] = useState(true);
   const [resultCount, setResultCount] = useState(0);
@@ -92,7 +101,7 @@ export default function DashboardPage() {
   }
 
   function formatDate(date: string) {
-    return new Intl.DateTimeFormat("de-CH", {
+    return new Intl.DateTimeFormat(locale, {
       day: "2-digit",
       month: "2-digit",
       year: "numeric",
@@ -174,7 +183,7 @@ export default function DashboardPage() {
             </p>
             
             <p className="mt-1 text-sm text-slate-600">
-              {averageShotCount} Schüsse aus {averageResultCount} {averageResultCount === 1 ? "Resultat" : "Resultaten"}
+              {averageShotCount} {word.shots} {word.from} {averageResultCount} {averageResultCount === 1 ? word.result : word.results}
             </p>
           </div>
 
@@ -184,7 +193,7 @@ export default function DashboardPage() {
               <>
                 <p className="mt-2 text-3xl font-bold text-slate-900">{Number(bestResult.total_score).toFixed(0)}</p>
                 <p className="mt-1 text-sm text-slate-600">
-                  {bestResult.actual_shots} Schüsse · Ø {Number(bestResult.average_score).toFixed(2)} · {formatDate(bestResult.date)}
+                  {bestResult.actual_shots} {word.shots} · Ø {Number(bestResult.average_score).toFixed(2)} · {formatDate(bestResult.date)}
                 </p>
               </>
             ) : (
@@ -201,7 +210,7 @@ export default function DashboardPage() {
                 <div>
                   <p className="text-sm text-slate-500">{formatDate(latestResult.date)}</p>
                   <h3 className="mt-1 text-xl font-bold text-slate-900">{latestResult.discipline}</h3>
-                  <p className="mt-2 text-sm text-slate-600">{latestResult.actual_shots} Schüsse</p>
+                  <p className="mt-2 text-sm text-slate-600">{latestResult.actual_shots} {word.shots}</p>
                 </div>
                 <div className="sm:text-right">
                   <p className="text-3xl font-bold text-slate-900">{Number(latestResult.total_score).toFixed(0)}</p>

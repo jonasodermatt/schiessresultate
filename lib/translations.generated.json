@@ -1,0 +1,2048 @@
+{
+  "( \"individual\" ); const [shotMode, setShotMode] = useState": {
+    "de": "( \"individual\" ); const [shotMode, setShotMode] = useState",
+    "fr": "( \"individuel\" ); const[shotMode, setShotMode] = useState",
+    "it": "(\"individuo\"); const[shotMode, setShotMode] = useState",
+    "en": "( \"individual\" ); const[shotMode, setShotMode] = useState"
+  },
+  "(\"fixed\"); const [plannedShots, setPlannedShots] = useState(10); const [shots, setShots] = useState": {
+    "de": "(\"fixed\"); const [plannedShots, setPlannedShots] = useState(10); const [shots, setShots] = useState",
+    "fr": "(\"fixé\"); const [plannedShots, setPlannedShots] = useState(10); const [shots, setShots] = useState",
+    "it": "(\"fisso\"); const [plannedShots, setPlannedShots] = useState(10); const [scatti, setShots] = useState",
+    "en": "(\"fixed\"); const [plannedShots, setPlannedShots] = useState(10); const [shots, setShots] = useState"
+  },
+  "([]); const [distanceInput, setDistanceInput] = useState(\"\"); const [positions, setPositions] = useState": {
+    "de": "([]); const [distanceInput, setDistanceInput] = useState(\"\"); const [positions, setPositions] = useState",
+    "fr": "([]); const [distanceInput, setDistanceInput] = useState(\"\"); const[positions, setPositions] = useState",
+    "it": "([]); const [distanceInput, setDistanceInput] = useState(\"\"); const[posizioni, setPosizioni] = useState",
+    "en": "([]); const [distanceInput, setDistanceInput] = useState(\"\"); const[positions, setPositions] = useState"
+  },
+  "([]); const [editingId, setEditingId] = useState": {
+    "de": "([]); const [editingId, setEditingId] = useState",
+    "fr": "([]); const [editingId, setEditingId] = useState",
+    "it": "([]); const [editingId, setEditingId] = useState",
+    "en": "([]); const [editingId, setEditingId] = useState"
+  },
+  "([]); const [equipment, setEquipment] = useState": {
+    "de": "([]); const [equipment, setEquipment] = useState",
+    "fr": "([]); const [équipement, setEquipment] = useState",
+    "it": "([]); const [attrezzatura, setEquipment] = useState",
+    "en": "([]); const [equipment, setEquipment] = useState"
+  },
+  "([]); const [equipmentId, setEquipmentId] = useState(\"\"); const [selectedDistance, setSelectedDistance] = useState": {
+    "de": "([]); const [equipmentId, setEquipmentId] = useState(\"\"); const [selectedDistance, setSelectedDistance] = useState",
+    "fr": "([]); const [equipmentId, setEquipmentId] = useState(\"\"); const[selectedDistance, setSelectedDistance] = useState",
+    "it": "([]); const [equipmentId, setEquipmentId] = useState(\"\"); const[selectedDistance, setSelectedDistance] = useState",
+    "en": "([]); const [equipmentId, setEquipmentId] = useState(\"\"); const[selectedDistance, setSelectedDistance] = useState"
+  },
+  "([]); const [inputType, setInputType] = useState(\"\"); const [editingShotIndex, setEditingShotIndex] = useState": {
+    "de": "([]); const [inputType, setInputType] = useState(\"\"); const [editingShotIndex, setEditingShotIndex] = useState",
+    "fr": "([]); const [inputType, setInputType] = useState(\"\"); const[editingShotIndex, setEditingShotIndex] = useState",
+    "it": "([]); const [inputType, setInputType] = useState(\"\"); const[editingShotIndex, setEditingShotIndex] = useState",
+    "en": "([]); const [inputType, setInputType] = useState(\"\"); const[editingShotIndex, setEditingShotIndex] = useState"
+  },
+  "([]); const [loading, setLoading] = useState(true); const [message, setMessage] = useState(\"\"); const [period, setPeriod] = useState": {
+    "de": "([]); const [loading, setLoading] = useState(true); const [message, setMessage] = useState(\"\"); const [period, setPeriod] = useState",
+    "fr": "([]); const [chargement, setLoading] = useState(true); const [message, setMessage] = useState(\"\"); const [période, setPeriod] = useState",
+    "it": "([]); const [caricamento, setLoading] = useState(true); const [messaggio, setMessage] = useState(\"\"); const [periodo, setPeriod] = useState",
+    "en": "([]); const [loading, setLoading] = useState(true); const [message, setMessage] = useState(\"\"); const [period, setPeriod] = useState"
+  },
+  "([]); const [loading, setLoading] = useState(true); const [saving, setSaving] = useState(false); const [message, setMessage] = useState(\"\"); const [editingId, setEditingId] = useState": {
+    "de": "([]); const [loading, setLoading] = useState(true); const [saving, setSaving] = useState(false); const [message, setMessage] = useState(\"\"); const [editingId, setEditingId] = useState",
+    "fr": "([]); const [chargement, setLoading] = useState(true); const [économie, setSaving] = useState(false); const [message, setMessage] = useState(\"\"); const [editingId, setEditingId] = useState",
+    "it": "([]); const [caricamento, setLoading] = useState(true); const [salvataggio, setSaving] = useState(false); const [messaggio, setMessage] = useState(\"\"); const [editingId, setEditingId] = useState",
+    "en": "([]); const [loading, setLoading] = useState(true); const [saving, setSaving] = useState(false); const [message, setMessage] = useState(\"\"); const [editingId, setEditingId] = useState"
+  },
+  "([]); const [loading, setLoading] = useState(true); const [saving, setSaving] = useState(false); const [message, setMessage] = useState(\"\"); const [name, setName] = useState(\"\"); const [address, setAddress] = useState(\"\"); const [postalCode, setPostalCode] = useState(\"\"); const [city, setCity] = useState(\"\"); const [latitude, setLatitude] = useState(\"\"); const [longitude, setLongitude] = useState(\"\"); const [distanceM, setDistanceM] = useState(\"\"); const [notes, setNotes] = useState(\"\"); const [favoriteIds, setFavoriteIds] = useState": {
+    "de": "([]); const [loading, setLoading] = useState(true); const [saving, setSaving] = useState(false); const [message, setMessage] = useState(\"\"); const [name, setName] = useState(\"\"); const [address, setAddress] = useState(\"\"); const [postalCode, setPostalCode] = useState(\"\"); const [city, setCity] = useState(\"\"); const [latitude, setLatitude] = useState(\"\"); const [longitude, setLongitude] = useState(\"\"); const [distanceM, setDistanceM] = useState(\"\"); const [notes, setNotes] = useState(\"\"); const [favoriteIds, setFavoriteIds] = useState",
+    "fr": "([]); const [chargement, setLoading] = useState(true); const [économie, setSaving] = useState(false); const [message, setMessage] = useState(\"\"); const [nom, setName] = useState(\"\"); const [adresse, setAddress] = useState(\"\"); const [postalCode, setPostalCode] = useState(\"\"); const [ville, setCity] = useState(\"\"); const [latitude, setLatitude] = useState(\"\"); const [longitude, setLongitude] = useState(\"\"); const [distanceM, setDistanceM] = useState(\"\"); const [notes, setNotes] = useState(\"\"); const [favoriteIds, setFavoriteIds] = useState",
+    "it": "([]); const [caricamento, setLoading] = useState(true); const [salvataggio, setSaving] = useState(false); const [messaggio, setMessage] = useState(\"\"); const [nome, setNome] = useState(\"\"); const [indirizzo, setIndirizzo] = useState(\"\"); const [postalCode, setPostalCode] = useState(\"\"); const [città, setCity] = useState(\"\"); const [latitudine, setLatitude] = useState(\"\"); const [longitudine, setLongitudine] = useState(\"\"); const [distanceM, setDistanceM] = useState(\"\"); const [note, setNotes] = useState(\"\"); const [IDpreferiti, setIdPreferiti] = useState",
+    "en": "([]); const [loading, setLoading] = useState(true); const [saving, setSaving] = useState(false); const [message, setMessage] = useState(\"\"); const [name, setName] = useState(\"\"); const [address, setAddress] = useState(\"\"); const [postalCode, setPostalCode] = useState(\"\"); const [city, setCity] = useState(\"\"); const [latitude, setLatitude] = useState(\"\"); const [longitude, setLongitude] = useState(\"\"); const [distanceM, setDistanceM] = useState(\"\"); const [notes, setNotes] = useState(\"\"); const [favoriteIds, setFavoriteIds] = useState"
+  },
+  "([]); const [resultShots, setResultShots] = useState": {
+    "de": "([]); const [resultShots, setResultShots] = useState",
+    "fr": "([]); const [resultShots, setResultShots] = useState",
+    "it": "([]); const [resultShots, setResultShots] = useState",
+    "en": "([]); const [resultShots, setResultShots] = useState"
+  },
+  "([]); const [selectedX, setSelectedX] = useState": {
+    "de": "([]); const [selectedX, setSelectedX] = useState",
+    "fr": "([]); const[selectedX, setSelectedX] = useState",
+    "it": "([]); const[selectedX, setSelectedX] = useState",
+    "en": "([]); const[selectedX, setSelectedX] = useState"
+  },
+  "([]); const [shootingRangeId, setShootingRangeId] = useState(\"\"); const [favoriteShootingRangeIds, setFavoriteShootingRangeIds] = useState": {
+    "de": "([]); const [shootingRangeId, setShootingRangeId] = useState(\"\"); const [favoriteShootingRangeIds, setFavoriteShootingRangeIds] = useState",
+    "fr": "([]); const [shootingRangeId, setShootingRangeId] = useState(\"\"); const [favoriteShootingRangeIds, setFavoriteShootingRangeIds] = useState",
+    "it": "([]); const [shootingRangeId, setShootingRangeId] = useState(\"\"); const [favoriteShootingRangeIds, setFavoriteShootingRangeIds] = useState",
+    "en": "([]); const [shootingRangeId, setShootingRangeId] = useState(\"\"); const [favoriteShootingRangeIds, setFavoriteShootingRangeIds] = useState"
+  },
+  "([]); const [shootingRangeId, setShootingRangeId] = useState(\"\"); const [notes, setNotes] = useState(\"\"); const [loading, setLoading] = useState(true); const [saving, setSaving] = useState(false); const [message, setMessage] = useState(\"\"); const [shots, setShots] = useState": {
+    "de": "([]); const [shootingRangeId, setShootingRangeId] = useState(\"\"); const [notes, setNotes] = useState(\"\"); const [loading, setLoading] = useState(true); const [saving, setSaving] = useState(false); const [message, setMessage] = useState(\"\"); const [shots, setShots] = useState",
+    "fr": "([]); const [shootingRangeId, setShootingRangeId] = useState(\"\"); const [notes, setNotes] = useState(\"\"); const [chargement, setLoading] = useState(true); const [économie, setSaving] = useState(false); const [message, setMessage] = useState(\"\"); const [shots, setShots] = useState",
+    "it": "([]); const [shootingRangeId, setShootingRangeId] = useState(\"\"); const [note, setNotes] = useState(\"\"); const [caricamento, setLoading] = useState(true); const [salvataggio, setSaving] = useState(false); const [messaggio, setMessage] = useState(\"\"); const [scatti, setShots] = useState",
+    "en": "([]); const [shootingRangeId, setShootingRangeId] = useState(\"\"); const [notes, setNotes] = useState(\"\"); const [loading, setLoading] = useState(true); const [saving, setSaving] = useState(false); const [message, setMessage] = useState(\"\"); const [shots, setShots] = useState"
+  },
+  "(Meter)": {
+    "de": "(Meter)",
+    "fr": "(mètres)",
+    "it": "(metri)",
+    "en": "(meters)"
+  },
+  "(null); const [averageShotCount, setAverageShotCount] = useState(0); const [averageResultCount, setAverageResultCount] = useState(0); const [bestResult, setBestResult] = useState": {
+    "de": "(null); const [averageShotCount, setAverageShotCount] = useState(0); const [averageResultCount, setAverageResultCount] = useState(0); const [bestResult, setBestResult] = useState",
+    "fr": "(nul); const [averageShotCount, setAverageShotCount] = useState(0); const [averageResultCount, setAverageResultCount] = useState(0); const [meilleurResult, setBestResult] = useState",
+    "it": "(nullo); const [averageShotCount, setAverageShotCount] = useState(0); const [averageResultCount, setAverageResultCount] = useState(0); const [bestResult, setBestResult] = useState",
+    "en": "(null); const [averageShotCount, setAverageShotCount] = useState(0); const [averageResultCount, setAverageResultCount] = useState(0); const [bestResult, setBestResult] = useState"
+  },
+  "(null); const [latestResult, setLatestResult] = useState": {
+    "de": "(null); const [latestResult, setLatestResult] = useState",
+    "fr": "(nul); const[latestResult, setLatestResult] = useState",
+    "it": "(nullo); const[latestResult, setLatestResult] = useState",
+    "en": "(null); const[latestResult, setLatestResult] = useState"
+  },
+  "(null); const [name, setName] = useState(\"\"); const [category, setCategory] = useState(\"Gewehr\"); const [manufacturer, setManufacturer] = useState(\"\"); const [model, setModel] = useState(\"\"); const [serialNumber, setSerialNumber] = useState(\"\"); const [notes, setNotes] = useState(\"\"); const [irisMin, setIrisMin] = useState(\"\"); const [irisMax, setIrisMax] = useState(\"\"); const [frontSightMin, setFrontSightMin] = useState(\"\"); const [frontSightMax, setFrontSightMax] = useState(\"\"); const [distances, setDistances] = useState": {
+    "de": "(null); const [name, setName] = useState(\"\"); const [category, setCategory] = useState(\"Gewehr\"); const [manufacturer, setManufacturer] = useState(\"\"); const [model, setModel] = useState(\"\"); const [serialNumber, setSerialNumber] = useState(\"\"); const [notes, setNotes] = useState(\"\"); const [irisMin, setIrisMin] = useState(\"\"); const [irisMax, setIrisMax] = useState(\"\"); const [frontSightMin, setFrontSightMin] = useState(\"\"); const [frontSightMax, setFrontSightMax] = useState(\"\"); const [distances, setDistances] = useState",
+    "fr": "(nul); const [nom, setName] = useState(\"\"); const [catégorie, setCategory] = useState(\"Rifle\"); const [fabricant, setManufacturer] = useState(\"\"); const [modèle, setModel] = useState(\"\"); const [serialNumber, setSerialNumber] = useState(\"\"); const [notes, setNotes] = useState(\"\"); const [irisMin, setIrisMin] = useState(\"\"); const [irisMax, setIrisMax] = useState(\"\"); const [frontSightMin, setFrontSightMin] = useState(\"\"); const [frontSightMax, setFrontSightMax] = useState(\"\"); const[distances, setDistances] = useState",
+    "it": "(nullo); const [nome, setNome] = useState(\"\"); const [category, setCategory] = useState(\"Fucile\"); const [produttore, setManufacturer] = useState(\"\"); const [modello, setModel] = useState(\"\"); const [serialNumber, setSerialNumber] = useState(\"\"); const [note, setNotes] = useState(\"\"); const [irisMin, setIrisMin] = useState(\"\"); const [irisMax, setIrisMax] = useState(\"\"); const [frontSightMin, setFrontSightMin] = useState(\"\"); const [frontSightMax, setFrontSightMax] = useState(\"\"); const[distanze, setDistances] = useState",
+    "en": "(null); const [name, setName] = useState(\"\"); const [category, setCategory] = useState(\"Rifle\"); const [manufacturer, setManufacturer] = useState(\"\"); const [model, setModel] = useState(\"\"); const [serialNumber, setSerialNumber] = useState(\"\"); const [notes, setNotes] = useState(\"\"); const [irisMin, setIrisMin] = useState(\"\"); const [irisMax, setIrisMax] = useState(\"\"); const [frontSightMin, setFrontSightMin] = useState(\"\"); const [frontSightMax, setFrontSightMax] = useState(\"\"); const[distances, setDistances] = useState"
+  },
+  "(null); const [selectedPosition, setSelectedPosition] = useState(\"\"); const [irisSetting, setIrisSetting] = useState(\"\"); const [frontSightSetting, setFrontSightSetting] = useState(\"\"); const [discipline, setDiscipline] = useState(\"300m\"); const [inputType, setInputType] = useState": {
+    "de": "(null); const [selectedPosition, setSelectedPosition] = useState(\"\"); const [irisSetting, setIrisSetting] = useState(\"\"); const [frontSightSetting, setFrontSightSetting] = useState(\"\"); const [discipline, setDiscipline] = useState(\"300m\"); const [inputType, setInputType] = useState",
+    "fr": "(nul); const [selectedPosition, setSelectedPosition] = useState(\"\"); const [irisSetting, setIrisSetting] = useState(\"\"); const [frontSightSetting, setFrontSightSetting] = useState(\"\"); const [discipline, setDiscipline] = useState(\"300m\"); const[inputType, setInputType] = useState",
+    "it": "(nullo); const [selectedPosition, setSelectedPosition] = useState(\"\"); const [irisSetting, setIrisSetting] = useState(\"\"); const [frontSightSetting, setFrontSightSetting] = useState(\"\"); const [disciplina, setDiscipline] = useState(\"300m\"); const[tipoInput, setInputType] = useState",
+    "en": "(null); const [selectedPosition, setSelectedPosition] = useState(\"\"); const [irisSetting, setIrisSetting] = useState(\"\"); const [frontSightSetting, setFrontSightSetting] = useState(\"\"); const [discipline, setDiscipline] = useState(\"300m\"); const[inputType, setInputType] = useState"
+  },
+  "(null); const [selectedPosition, setSelectedPosition] = useState(\"\"); const [irisSetting, setIrisSetting] = useState(\"\"); const [frontSightSetting, setFrontSightSetting] = useState(\"\"); const [shootingRanges, setShootingRanges] = useState": {
+    "de": "(null); const [selectedPosition, setSelectedPosition] = useState(\"\"); const [irisSetting, setIrisSetting] = useState(\"\"); const [frontSightSetting, setFrontSightSetting] = useState(\"\"); const [shootingRanges, setShootingRanges] = useState",
+    "fr": "(nul); const [selectedPosition, setSelectedPosition] = useState(\"\"); const [irisSetting, setIrisSetting] = useState(\"\"); const [frontSightSetting, setFrontSightSetting] = useState(\"\"); const[shootingRanges, setShootingRanges] = useState",
+    "it": "(nullo); const [selectedPosition, setSelectedPosition] = useState(\"\"); const [irisSetting, setIrisSetting] = useState(\"\"); const [frontSightSetting, setFrontSightSetting] = useState(\"\"); const[shootingRanges, setShootingRanges] = useState",
+    "en": "(null); const [selectedPosition, setSelectedPosition] = useState(\"\"); const [irisSetting, setIrisSetting] = useState(\"\"); const [frontSightSetting, setFrontSightSetting] = useState(\"\"); const[shootingRanges, setShootingRanges] = useState"
+  },
+  "(null); const [selectedScore, setSelectedScore] = useState": {
+    "de": "(null); const [selectedScore, setSelectedScore] = useState",
+    "fr": "(nul); const[selectedScore, setSelectedScore] = useState",
+    "it": "(nullo); const[selectedScore, setSelectedScore] = useState",
+    "en": "(null); const[selectedScore, setSelectedScore] = useState"
+  },
+  "(null); const [selectedY, setSelectedY] = useState": {
+    "de": "(null); const [selectedY, setSelectedY] = useState",
+    "fr": "(nul); const[selectedY, setSelectedY] = useState",
+    "it": "(nullo); const[selezionatoY, setSelezionatoY] = useState",
+    "en": "(null); const[selectedY, setSelectedY] = useState"
+  },
+  "(null); const [shootingDate, setShootingDate] = useState(\"\"); const [favoriteShootingRangeIds, setFavoriteShootingRangeIds] = useState": {
+    "de": "(null); const [shootingDate, setShootingDate] = useState(\"\"); const [favoriteShootingRangeIds, setFavoriteShootingRangeIds] = useState",
+    "fr": "(nul); const [shootingDate, setShootingDate] = useState(\"\"); const [favoriteShootingRangeIds, setFavoriteShootingRangeIds] = useState",
+    "it": "(nullo); const [shootingDate, setShootingDate] = useState(\"\"); const [favoriteShootingRangeIds, setFavoriteShootingRangeIds] = useState",
+    "en": "(null); const [shootingDate, setShootingDate] = useState(\"\"); const [favoriteShootingRangeIds, setFavoriteShootingRangeIds] = useState"
+  },
+  "(optional)": {
+    "de": "(optional)",
+    "fr": "(facultatif)",
+    "it": "(facoltativo)",
+    "en": "(optional)"
+  },
+  ") : equipment.length === 0 ? (": {
+    "de": ") : equipment.length === 0 ? (",
+    "fr": ") : équipement.longueur === 0 ? (",
+    "it": "): attrezzatura.lunghezza === 0 ? (",
+    "en": "): equipment.length === 0 ? ("
+  },
+  ") : filteredResults.length === 0 ? (": {
+    "de": ") : filteredResults.length === 0 ? (",
+    "fr": ") : filteredResults.length === 0 ? (",
+    "it": "): filteredResults.length === 0 ? (",
+    "en": "): filteredResults.length === 0 ? ("
+  },
+  ") : results.length === 0 ? (": {
+    "de": ") : results.length === 0 ? (",
+    "fr": ") : résultats.longueur === 0 ? (",
+    "it": "): risultati.lunghezza === 0 ? (",
+    "en": "): results.length === 0 ? ("
+  },
+  ") : shootingRanges.length === 0 ? (": {
+    "de": ") : shootingRanges.length === 0 ? (",
+    "fr": ") : shootingRanges.length === 0 ? (",
+    "it": "): shootingRanges.length === 0 ? (",
+    "en": "): shootingRanges.length === 0 ? ("
+  },
+  ")\r\n        .single();\r\n\r\n    if (resultError || !result) {\r\n      setMessage(\r\n        `Fehler beim Resultat: ${\r\n          resultError?.message ??": {
+    "de": ")\r\n        .single();\r\n\r\n    if (resultError || !result) {\r\n      setMessage(\r\n        `Fehler beim Resultat: ${\r\n          resultError?.message ??",
+    "fr": ")\r\n        .single();\r\n\r\n    if (resultError || !result) {\r\n      setMessage(\r\n        `Erreur dans le résultat : ${\r\n          resultError?.message ??",
+    "it": ")\r\n        .singolo();\r\n\r\n    if (risultatoErrore || !risultato) {\r\n      setMessaggio(\r\n        \"Errore nel risultato: ${\r\n          risultatoErrore?.messaggio ??",
+    "en": ")\r\n        .single();\r\n\r\n    if (resultError || !result) {\r\n      setMessage(\r\n        `Error in result: ${\r\n          resultError?.message ??"
+  },
+  ");\r\n  const [selectedDistance, setSelectedDistance] = useState<number | null>(null);\r\n  const [selectedPosition, setSelectedPosition] = useState(": {
+    "de": ");\r\n  const [selectedDistance, setSelectedDistance] = useState<number | null>(null);\r\n  const [selectedPosition, setSelectedPosition] = useState(",
+    "fr": ");\r\n  const [selectedDistance, setSelectedDistance] = useState<numéro | nul>(nul);\r\n  const [selectedPosition, setSelectedPosition] = useState(",
+    "it": ");\r\n  const [selectedDistance, setSelectedDistance] = useState<numero | nullo>(nulla);\r\n  const [Posizioneselezionata, setPosizioneSelezionata] = useState(",
+    "en": ");\r\n  const [selectedDistance, setSelectedDistance] = useState<number | null>(null);\r\n  const [selectedPosition, setSelectedPosition] = useState("
+  },
+  ");\r\n  const [selectedDistance, setSelectedDistance] =\r\n  useState<number | null>(null);\r\n\r\nconst [selectedPosition, setSelectedPosition] =\r\n  useState(": {
+    "de": ");\r\n  const [selectedDistance, setSelectedDistance] =\r\n  useState<number | null>(null);\r\n\r\nconst [selectedPosition, setSelectedPosition] =\r\n  useState(",
+    "fr": ");\r\n  const [selectedDistance, setSelectedDistance] =\r\n  useState<numéro | nul>(nul);\r\n\r\nconst [selectedPosition, setSelectedPosition] =\r\n  utiliserState(",
+    "it": ");\r\n  const [selectedDistance, setSelectedDistance] =\r\n  useState<numero | nullo>(nulla);\r\n\r\nconst [selectedPosition, setSelectedPosition] =\r\n  useState(",
+    "en": ");\r\n  const [selectedDistance, setSelectedDistance] =\r\n  useState<number | null>(null);\r\n\r\nconst [selectedPosition, setSelectedPosition] =\r\n  useState("
+  },
+  ", id)\r\n        .single();\r\n\r\n      if (resultError || !resultData) {\r\n        setMessage(`Fehler beim Laden: ${resultError?.message ??": {
+    "de": ", id)\r\n        .single();\r\n\r\n      if (resultError || !resultData) {\r\n        setMessage(`Fehler beim Laden: ${resultError?.message ??",
+    "fr": ", identifiant)\r\n        .single();\r\n\r\n      si (resultError || !resultData) {\r\n        setMessage(`Erreur de chargement : ${resultError?.message ??",
+    "it": ", id)\r\n        .singolo();\r\n\r\n      if (risultatoErrore || !risultatoData) {\r\n        setMessage(`Errore durante il caricamento: ${resultError?.message ??",
+    "en": ", id)\r\n        .single();\r\n\r\n      if (resultError || !resultData) {\r\n        setMessage(`Error loading: ${resultError?.message ??"
+  },
+  ", id);\r\n\r\n  if (error) {\r\n    setMessage(\r\n      `Schiessstand konnte nicht deaktiviert werden: ${error.message}`\r\n    );\r\n    return;\r\n  }\r\n\r\n  setMessage(": {
+    "de": ", id);\r\n\r\n  if (error) {\r\n    setMessage(\r\n      `Schiessstand konnte nicht deaktiviert werden: ${error.message}`\r\n    );\r\n    return;\r\n  }\r\n\r\n  setMessage(",
+    "fr": ", identifiant);\r\n\r\n  si (erreur) {\r\n    setMessage(\r\n      `Le champ de tir n'a pas pu être désactivé : ${error.message}`\r\n    );\r\n    retour;\r\n  }\r\n\r\n  setMessage(",
+    "it": ", id);\r\n\r\n  se (errore) {\r\n    setMessaggio(\r\n      `Impossibile disattivare il poligono di tiro: ${error.message}`\r\n    );\r\n    ritorno;\r\n  }\r\n\r\n  setMessaggio(",
+    "en": ", id);\r\n\r\n  if (error) {\r\n    setMessage(\r\n      `Shooting range could not be deactivated: ${error.message}`\r\n    );\r\n    return;\r\n  }\r\n\r\n  setMessage("
+  },
+  ",\r\n            }}\r\n          />\r\n\r\n          <div\r\n            style={{\r\n              position:": {
+    "de": ",\r\n            }}\r\n          />\r\n\r\n          <div\r\n            style={{\r\n              position:",
+    "fr": ",\r\n            }}\r\n          />\r\n\r\n          <divers\r\n            style={{\r\n              poste :",
+    "it": ",\r\n            }}\r\n          />\r\n\r\n          <varie\r\n            stile={{\r\n              posizione:",
+    "en": ",\r\n            }}\r\n          />\r\n\r\n          <various\r\n            style={{\r\n              position:"
+  },
+  ",\r\n        }}\r\n      />\r\n\r\n      {/* 10 in der Mitte */}\r\n      <span\r\n        style={{\r\n          position:": {
+    "de": ",\r\n        }}\r\n      />\r\n\r\n      {/* 10 in der Mitte */}\r\n      <span\r\n        style={{\r\n          position:",
+    "fr": ",\r\n        }}\r\n      />\r\n\r\n      {/* 10 au milieu */}\r\n      <espagnol\r\n        style={{\r\n          poste :",
+    "it": ",\r\n        }}\r\n      />\r\n\r\n      {/* 10 al centro */}\r\n      <spagnolo\r\n        stile={{\r\n          posizione:",
+    "en": ",\r\n        }}\r\n      />\r\n\r\n      {/* 10 in the middle */}\r\n      <spanish\r\n        style={{\r\n          position:"
+  },
+  ",\r\n      }}\r\n    />\r\n    <span> Anzahl Schüsse pro Resultat</span>\r\n  </div>\r\n</div>\r\n\r\n      <p className=": {
+    "de": ",\r\n      }}\r\n    />\r\n    <span> Anzahl Schüsse pro Resultat</span>\r\n  </div>\r\n</div>\r\n\r\n      <p className=",
+    "fr": ",\r\n      }}\r\n    />\r\n    <span> Nombre de tirs par résultat</span>\r\n  </div>\r\n</div>\r\n\r\n      <p nom de classe =",
+    "it": ",\r\n      }}\r\n    />\r\n    <span>Numero di scatti per risultato</span>\r\n  </div>\r\n</div>\r\n\r\n      <p nomeclasse=",
+    "en": ",\r\n      }}\r\n    />\r\n    <span> Number of shots per result</span>\r\n  </div>\r\n</div>\r\n\r\n      <p className="
+  },
+  ",\r\n      }}\r\n    />\r\n    <span> Durchschnitt pro Schuss</span>\r\n  </div>\r\n\r\n  <div className=": {
+    "de": ",\r\n      }}\r\n    />\r\n    <span> Durchschnitt pro Schuss</span>\r\n  </div>\r\n\r\n  <div className=",
+    "fr": ",\r\n      }}\r\n    />\r\n    <span>Moyenne par tir</span>\r\n  </div>\r\n\r\n  <nom de classe div =",
+    "it": ",\r\n      }}\r\n    />\r\n    <span>Media per scatto</span>\r\n  </div>\r\n\r\n  <div nomeclasse=",
+    "en": ",\r\n      }}\r\n    />\r\n    <span>Average per shot</span>\r\n  </div>\r\n\r\n  <div className="
+  },
+  ": availablePositions[0]\r\n              ?.position ??": {
+    "de": ": availablePositions[0]\r\n              ?.position ??",
+    "fr": ": postes disponibles[0]\r\n              ?.position ??",
+    "it": ":Posizioni disponibili[0]\r\n              ?.posizione ??",
+    "en": ": availablePositions[0]\r\n              ?.position ??"
+  },
+  "}\r\n                    Freies Training\r\n                  </label>\r\n                </div>\r\n              </div>\r\n\r\n              {shotMode ===": {
+    "de": "}\r\n                    Freies Training\r\n                  </label>\r\n                </div>\r\n              </div>\r\n\r\n              {shotMode ===",
+    "fr": "}\r\n                    Formation gratuite\r\n                  </étiquette>\r\n                </div>\r\n              </div>\r\n\r\n              {Mode de tir ===",
+    "it": "}\r\n                    Formazione gratuita\r\n                  </etichetta>\r\n                </div>\r\n              </div>\r\n\r\n              {Modalità di ripresa ===",
+    "en": "}\r\n                    Free training\r\n                  </label>\r\n                </div>\r\n              </div>\r\n\r\n              {shotMode ==="
+  },
+  "}\r\n            {verticalPosition}\r\n          </p>\r\n        </div>\r\n\r\n        <div className=": {
+    "de": "}\r\n            {verticalPosition}\r\n          </p>\r\n        </div>\r\n\r\n        <div className=",
+    "fr": "}\r\n            {Position verticale}\r\n          </p>\r\n        </div>\r\n\r\n        <nom de classe div =",
+    "it": "}\r\n            {Posizione verticale}\r\n          </p>\r\n        </div>\r\n\r\n        <div nomeclasse=",
+    "en": "}\r\n            {verticalPosition}\r\n          </p>\r\n        </div>\r\n\r\n        <div className="
+  },
+  "+ Hinzufügen": {
+    "de": "+ Hinzufügen",
+    "fr": "+ Ajouter",
+    "it": "+ Aggiungi",
+    "en": "+ Add"
+  },
+  "+ Neues Resultat": {
+    "de": "+ Neues Resultat",
+    "fr": "+ Nouveau résultat",
+    "it": "+ Nuovo risultato",
+    "en": "+ New result"
+  },
+  "= 112.5 && angle": {
+    "de": "= 112.5 && angle",
+    "fr": "= 112,5 && angle",
+    "it": "= 112,5 && angolo",
+    "en": "= 112.5 && angle"
+  },
+  "= -112.5 && angle": {
+    "de": "= -112.5 && angle",
+    "fr": "= -112,5 && angle",
+    "it": "= -112,5 && angolo",
+    "en": "= -112.5 && angle"
+  },
+  "= -157.5 && angle": {
+    "de": "= -157.5 && angle",
+    "fr": "= -157,5 && angle",
+    "it": "= -157,5 && angolo",
+    "en": "= -157.5 && angle"
+  },
+  "= 157.5 || angle": {
+    "de": "= 157.5 || angle",
+    "fr": "= 157,5 || angle",
+    "it": "= 157,5 || angolo",
+    "en": "= 157.5 || angle"
+  },
+  "= 22.5 && angle": {
+    "de": "= 22.5 && angle",
+    "fr": "= 22,5 && angle",
+    "it": "= 22,5 && angolo",
+    "en": "= 22.5 && angle"
+  },
+  "= -22.5 && angle": {
+    "de": "= -22.5 && angle",
+    "fr": "= -22,5 && angle",
+    "it": "= -22,5 && angolo",
+    "en": "= -22.5 && angle"
+  },
+  "= 51 && code": {
+    "de": "= 51 && code",
+    "fr": "= 51 && code",
+    "it": "= 51 && codice",
+    "en": "= 51 && code"
+  },
+  "= 61 && code": {
+    "de": "= 61 && code",
+    "fr": "= 61 && code",
+    "it": "= 61 && codice",
+    "en": "= 61 && code"
+  },
+  "= 67.5 && angle": {
+    "de": "= 67.5 && angle",
+    "fr": "= 67,5 && angle",
+    "it": "= 67,5 && angolo",
+    "en": "= 67.5 && angle"
+  },
+  "= 71 && code": {
+    "de": "= 71 && code",
+    "fr": "= 71 && code",
+    "it": "= 71 && codice",
+    "en": "= 71 && code"
+  },
+  "= 80 && code": {
+    "de": "= 80 && code",
+    "fr": "= 80 && code",
+    "it": "= 80 && codice",
+    "en": "= 80 && code"
+  },
+  "= 85 && code": {
+    "de": "= 85 && code",
+    "fr": "= 85 && code",
+    "it": "= 85 && codice",
+    "en": "= 85 && code"
+  },
+  "= 95 && code": {
+    "de": "= 95 && code",
+    "fr": "= 95 && code",
+    "it": "= 95 && codice",
+    "en": "= 95 && code"
+  },
+  "= previousStart && date": {
+    "de": "= previousStart && date",
+    "fr": "= date de début && précédente",
+    "it": "= data di inizio && precedente",
+    "en": "= previousStart && date"
+  },
+  ">\r\n                            Ø pro\r\n                            Schuss\r\n                          </p>\r\n\r\n                          <p className=": {
+    "de": ">\r\n                            Ø pro\r\n                            Schuss\r\n                          </p>\r\n\r\n                          <p className=",
+    "fr": ">\r\n                            Ø par\r\n                            Tir\r\n                          </p>\r\n\r\n                          <p nom de classe =",
+    "it": ">\r\n                            Ø ca\r\n                            Sparato\r\n                          </p>\r\n\r\n                          <p nomeclasse=",
+    "en": ">\r\n                            Ø per\r\n                            Shot\r\n                          </p>\r\n\r\n                          <p className="
+  },
+  ">\r\n                    Distanz\r\n                    <span className=": {
+    "de": ">\r\n                    Distanz\r\n                    <span className=",
+    "fr": ">\r\n                    Distance\r\n                    <span className=",
+    "it": ">\r\n                    Distanza\r\n                    <span className=",
+    "en": ">\r\n                    Distance\r\n                    <span className="
+  },
+  ">\r\n                  Schussmodus\r\n                </p>\r\n\r\n                <div className=": {
+    "de": ">\r\n                  Schussmodus\r\n                </p>\r\n\r\n                <div className=",
+    "fr": ">\r\n                  Mode de prise de vue\r\n                </p>\r\n\r\n                <nom de classe div =",
+    "it": ">\r\n                  Modalità di scatto\r\n                </p>\r\n\r\n                <div nomeclasse=",
+    "en": ">\r\n                  Shooting mode\r\n                </p>\r\n\r\n                <div className="
+  },
+  ">\r\n            {horizontalPosition}\r\n            {": {
+    "de": ">\r\n            {horizontalPosition}\r\n            {",
+    "fr": ">\r\n            {position horizontale}\r\n            {",
+    "it": ">\r\n            {posizione orizzontale}\r\n            {",
+    "en": ">\r\n            {horizontalposition}\r\n            {"
+  },
+  ">\r\n            {positionedShots.length}\r\n          </p>\r\n        </div>\r\n\r\n        <div className=": {
+    "de": ">\r\n            {positionedShots.length}\r\n          </p>\r\n        </div>\r\n\r\n        <div className=",
+    "fr": ">\r\n            {positionedShots.length}\r\n          </p>\r\n        </div>\r\n\r\n        <nom de classe div =",
+    "it": ">\r\n            {positionedShots.length}\r\n          </p>\r\n        </div>\r\n\r\n        <div nomeclasse=",
+    "en": ">\r\n            {positionedShots.length}\r\n          </p>\r\n        </div>\r\n\r\n        <div className="
+  },
+  ">\r\n          Deine Resultate. Deine Entwicklung.\r\n        </p>\r\n      </div>\r\n    </Link>\r\n\r\n          <Link\r\n            href=": {
+    "de": ">\r\n          Deine Resultate. Deine Entwicklung.\r\n        </p>\r\n      </div>\r\n    </Link>\r\n\r\n          <Link\r\n            href=",
+    "fr": ">\r\n          Vos résultats. Votre développement.\r\n        </p>\r\n      </div>\r\n    </Lien>\r\n\r\n          <Lien\r\n            href=",
+    "it": ">\r\n          I tuoi risultati. Il tuo sviluppo.\r\n        </p>\r\n      </div>\r\n    </Link>\r\n\r\n          <Collegamento\r\n            href=",
+    "en": ">\r\n          Your results. Your development.\r\n        </p>\r\n      </div>\r\n    </Link>\r\n\r\n          <Link\r\n            href="
+  },
+  ">\r\n          Neues Resultat\r\n        </h1>\r\n\r\n        <div className=": {
+    "de": ">\r\n          Neues Resultat\r\n        </h1>\r\n\r\n        <div className=",
+    "fr": ">\r\n          Nouveau résultat\r\n        </h1>\r\n\r\n        <nom de classe div =",
+    "it": ">\r\n          Nuovo risultato\r\n        </h1>\r\n\r\n        <div nomeclasse=",
+    "en": ">\r\n          New result\r\n        </h1>\r\n\r\n        <div className="
+  },
+  ">\r\n      Angaben zum Resultat\r\n    </h2>\r\n\r\n    {!showResultDetails && (\r\n      <p className=": {
+    "de": ">\r\n      Angaben zum Resultat\r\n    </h2>\r\n\r\n    {!showResultDetails && (\r\n      <p className=",
+    "fr": ">\r\n      Informations sur le résultat\r\n    </h2>\r\n\r\n    {!showResultDetails && (\r\n      <p nom de classe =",
+    "it": ">\r\n      Informazioni sul risultato\r\n    </h2>\r\n\r\n    {!showResultDetails && (\r\n      <p nomeclasse=",
+    "en": ">\r\n      Information about the result\r\n    </h2>\r\n\r\n    {!showResultDetails && (\r\n      <p className="
+  },
+  ">{getEquipmentPositionLabel(result.shooting_position) ??": {
+    "de": ">{getEquipmentPositionLabel(result.shooting_position) ??",
+    "fr": ">{getEquipmentPositionLabel(result.shooting_position) ??",
+    "it": ">{getEquipmentPositionLabel(risultato.shooting_position) ??",
+    "en": ">{getEquipmentPositionLabel(result.shooting_position) ??"
+  },
+  ">← Abbrechen</Link>\r\n        </div>\r\n      </header>\r\n\r\n      <div className=": {
+    "de": ">← Abbrechen</Link>\r\n        </div>\r\n      </header>\r\n\r\n      <div className=",
+    "fr": ">← Annuler</Link>\r\n        </div>\r\n      </en-tête>\r\n\r\n      <nom de classe div =",
+    "it": ">← Annulla</Link>\r\n        </div>\r\n      </intestazione>\r\n\r\n      <div nomeclasse=",
+    "en": ">← Cancel</Link>\r\n        </div>\r\n      </header>\r\n\r\n      <div className="
+  },
+  ">Bestes Resultat der letzten 12 Monate</p>\r\n            {bestResult ? (\r\n              <>\r\n                <p className=": {
+    "de": ">Bestes Resultat der letzten 12 Monate</p>\r\n            {bestResult ? (\r\n              <>\r\n                <p className=",
+    "fr": ">Meilleur résultat des 12 derniers mois</p>\r\n            {meilleurRésultat ? (\r\n              <>\r\n                <p nom de classe =",
+    "it": ">Miglior risultato degli ultimi 12 mesi</p>\r\n            {miglior risultato? (\r\n              <>\r\n                <p nomeclasse=",
+    "en": ">Best result of the last 12 months</p>\r\n            {bestResult ? (\r\n              <>\r\n                <p className="
+  },
+  ">Deine Resultate. Deine Entwicklung.</p></div>\r\n          </Link>\r\n          <Link href={`/results/${params.id}`} className=": {
+    "de": ">Deine Resultate. Deine Entwicklung.</p></div>\r\n          </Link>\r\n          <Link href={`/results/${params.id}`} className=",
+    "fr": ">Vos résultats. Votre développement.</p></div>\r\n          </Lien>\r\n          <Link href={`/results/${params.id}`} className=",
+    "it": ">I tuoi risultati. Il tuo sviluppo.</p></div>\r\n          </Link>\r\n          <Link href={`/results/${params.id}`} className=",
+    "en": ">Your results. Your development.</p></div>\r\n          </Link>\r\n          <Link href={`/results/${params.id}`} className="
+  },
+  ">Distanz</p><p className=": {
+    "de": ">Distanz</p><p className=",
+    "fr": ">Distance</p><p className=",
+    "it": ">Distanza</p><p className=",
+    "en": ">Distance</p><p className="
+  },
+  ">Korneinstellung</label>\r\n                  <input id=": {
+    "de": ">Korneinstellung</label>\r\n                  <input id=",
+    "fr": ">Fixation des grains</label>\r\n                  <identifiant d'entrée=",
+    "it": ">Impostazione della grana</label>\r\n                  <ID input=",
+    "en": ">Grain setting</label>\r\n                  <input id="
+  },
+  ">Korneinstellung</p><p className=": {
+    "de": ">Korneinstellung</p><p className=",
+    "fr": ">Fixation du grain</p><p className=",
+    "it": ">Impostazione della grana</p><p className=",
+    "en": ">Grain Setting</p><p className="
+  },
+  ">Korrigiere den Wert oder die Position eines Schusses.</p>\r\n              <div className=": {
+    "de": ">Korrigiere den Wert oder die Position eines Schusses.</p>\r\n              <div className=",
+    "fr": ">Corrigez la valeur ou la position d'un tir.</p>\r\n              <nom de classe div =",
+    "it": ">Correggi il valore o la posizione di un tiro.</p>\r\n              <div nomeclasse=",
+    "en": ">Correct the value or position of a shot.</p>\r\n              <div className="
+  },
+  ">Passe die Angaben zu diesem Resultat an.</p>\r\n        {message && <div className=": {
+    "de": ">Passe die Angaben zu diesem Resultat an.</p>\r\n        {message && <div className=",
+    "fr": ">Ajustez les informations pour ce résultat.</p>\r\n        {message && <div className=",
+    "it": ">Modifica le informazioni per questo risultato.</p>\r\n        {messaggio && <div className=",
+    "en": ">Adjust the information for this result.</p>\r\n        {message && <div className="
+  },
+  ">Resultat bearbeiten</h1>\r\n        <p className=": {
+    "de": ">Resultat bearbeiten</h1>\r\n        <p className=",
+    "fr": ">Modifier le résultat</h1>\r\n        <p nom de classe =",
+    "it": ">Modifica risultato</h1>\r\n        <p nomeclasse=",
+    "en": ">Edit result</h1>\r\n        <p className="
+  },
+  ">Schiessstand</label>\r\n            <select id=": {
+    "de": ">Schiessstand</label>\r\n            <select id=",
+    "fr": ">Stand de tir</label>\r\n            <identifiant de sélection=",
+    "it": ">Poligono di tiro</label>\r\n            <seleziona ID=",
+    "en": ">Shooting range</label>\r\n            <select id="
+  },
+  ">Stellung</p><p className=": {
+    "de": ">Stellung</p><p className=",
+    "fr": ">Position</p><p className=",
+    "it": ">Posizione</p><p className=",
+    "en": ">Position</p><p className="
+  },
+  ">Training</h2>\r\n          <div className=": {
+    "de": ">Training</h2>\r\n          <div className=",
+    "fr": ">Formation</h2>\r\n          <nom de classe div =",
+    "it": ">Formazione</h2>\r\n          <div nomeclasse=",
+    "en": ">Training</h2>\r\n          <div className="
+  },
+  "◎ Easyshooter": {
+    "de": "◎ Easyshooter",
+    "fr": "◎ Jeu de tir facile",
+    "it": "◎ Sparatutto facile",
+    "en": "◎ Easy shooter"
+  },
+  "← Abbrechen": {
+    "de": "← Abbrechen",
+    "fr": "← Annuler",
+    "it": "← Annulla",
+    "en": "← Cancel"
+  },
+  "← Dashboard": {
+    "de": "← Dashboard",
+    "fr": "← Tableau de bord",
+    "it": "← Cruscotto",
+    "en": "← Dashboard"
+  },
+  "← Meine Resultate": {
+    "de": "← Meine Resultate",
+    "fr": "← Mes résultats",
+    "it": "← I miei risultati",
+    "en": "← My results"
+  },
+  "← Zurück zu meinen Resultaten": {
+    "de": "← Zurück zu meinen Resultaten",
+    "fr": "← Retour à mes résultats",
+    "it": "← Torniamo ai miei risultati",
+    "en": "← Back to my results"
+  },
+  "← Zurück zum Login": {
+    "de": "← Zurück zum Login",
+    "fr": "← Retour à la connexion",
+    "it": "← Torna al login",
+    "en": "← Back to login"
+  },
+  "↶ Letzten Schuss entfernen": {
+    "de": "↶ Letzten Schuss entfernen",
+    "fr": "↶ Supprimer le dernier plan",
+    "it": "↶ Rimuovi l'ultimo colpo",
+    "en": "↶ Remove last shot"
+  },
+  "★ Meine Favoriten": {
+    "de": "★ Meine Favoriten",
+    "fr": "★ Mes favoris",
+    "it": "★ I miei preferiti",
+    "en": "★ My favorites"
+  },
+  "✏️ Bearbeiten": {
+    "de": "✏️ Bearbeiten",
+    "fr": "✏️ Modifier",
+    "it": "✏️ Modifica",
+    "en": "✏️ Edit"
+  },
+  "✏️ Resultat bearbeiten": {
+    "de": "✏️ Resultat bearbeiten",
+    "fr": "✏️ Modifier le résultat",
+    "it": "✏️ Modifica risultato",
+    "en": "✏️ Edit result"
+  },
+  "✓ Resultaterfassung abgeschlossen": {
+    "de": "✓ Resultaterfassung abgeschlossen",
+    "fr": "✓ Enregistrement des résultats terminé",
+    "it": "✓ Registrazione dei risultati completata",
+    "en": "✓ Results recording completed"
+  },
+  "✓ Resultaterfassung abschliessen": {
+    "de": "✓ Resultaterfassung abschliessen",
+    "fr": "✓ Enregistrement complet des résultats",
+    "it": "✓ Completa la registrazione dei risultati",
+    "en": "✓ Complete results recording"
+  },
+  "⚠️ Möglicherweise bereits vorhanden": {
+    "de": "⚠️ Möglicherweise bereits vorhanden",
+    "fr": "⚠️ Peut déjà exister",
+    "it": "⚠️ Potrebbe già esistere",
+    "en": "⚠️ May already exist"
+  },
+  "0 ? \"↑ \" : averageTrend": {
+    "de": "0 ? \"↑ \" : averageTrend",
+    "fr": "0 ? \"↑ » : tendance moyenne",
+    "it": "0? \"↑ \": tendenza media",
+    "en": "0? \"↑ \" : averageTrend"
+  },
+  "0 ? \"font-medium text-green-600\" : averageTrend": {
+    "de": "0 ? \"font-medium text-green-600\" : averageTrend",
+    "fr": "0 ? \"font-medium text-green-600\" : moyenneTrend",
+    "it": "0? \"font-medium text-green-600\": trend medio",
+    "en": "0? \"font-medium text-green-600\" : averageTrend"
+  },
+  "a.shot_number - b.shot_number ); return (": {
+    "de": "a.shot_number - b.shot_number ); return (",
+    "fr": "a.shot_number - b.shot_number ); retour (",
+    "it": "a.numero_colpo - b.numero_colpo ); ritorno (",
+    "en": "a.shot_number - b.shot_number ); return ("
+  },
+  "Abbrechen": {
+    "de": "Abbrechen",
+    "fr": "Annuler",
+    "it": "Annulla",
+    "en": "Cancel"
+  },
+  "Adresse": {
+    "de": "Adresse",
+    "fr": "Adresse",
+    "it": "Indirizzo",
+    "en": "Address"
+  },
+  "Aktiv": {
+    "de": "Aktiv",
+    "fr": "Actif",
+    "it": "Attivo",
+    "en": "Active"
+  },
+  "Alle Disziplinen": {
+    "de": "Alle Disziplinen",
+    "fr": "Toutes les disciplines",
+    "it": "Tutte le discipline",
+    "en": "All disciplines"
+  },
+  "Alle Resultate ansehen →": {
+    "de": "Alle Resultate ansehen →",
+    "fr": "Voir tous les résultats →",
+    "it": "Visualizza tutti i risultati →",
+    "en": "View all results →"
+  },
+  "Alle Schiessstände": {
+    "de": "Alle Schiessstände",
+    "fr": "Tous les stands de tir",
+    "it": "Tutti i poligoni di tiro",
+    "en": "All shooting ranges"
+  },
+  "Alle Sportgeräte": {
+    "de": "Alle Sportgeräte",
+    "fr": "Tous les équipements sportifs",
+    "it": "Tutte le attrezzature sportive",
+    "en": "All sports equipment"
+  },
+  "Alle Treffer der aktuell gefilterten Resultate.": {
+    "de": "Alle Treffer der aktuell gefilterten Resultate.",
+    "fr": "Tous les résultats des résultats actuellement filtrés.",
+    "it": "Tutti i risultati dei risultati attualmente filtrati.",
+    "en": "All hits of the currently filtered results."
+  },
+  "Alle Treffer mit gespeicherter Position.": {
+    "de": "Alle Treffer mit gespeicherter Position.",
+    "fr": "Tous les hits avec position enregistrée.",
+    "it": "Tutti i colpi con posizione salvata.",
+    "en": "All hits with saved position."
+  },
+  "Als Favorit speichern": {
+    "de": "Als Favorit speichern",
+    "fr": "Enregistrer comme favori",
+    "it": "Salva come preferito",
+    "en": "Save as favorite"
+  },
+  "Andere": {
+    "de": "Andere",
+    "fr": "Autre",
+    "it": "Altro",
+    "en": "Other"
+  },
+  "Änderungen speichern": {
+    "de": "Änderungen speichern",
+    "fr": "Enregistrer les modifications",
+    "it": "Salva modifiche",
+    "en": "Save changes"
+  },
+  "Angaben zum Resultat": {
+    "de": "Angaben zum Resultat",
+    "fr": "Informations sur le résultat",
+    "it": "Informazioni sul risultato",
+    "en": "Information about the result"
+  },
+  "Anzahl": {
+    "de": "Anzahl",
+    "fr": "numéro",
+    "it": "numero",
+    "en": "number"
+  },
+  "Anzahl Schüsse": {
+    "de": "Anzahl Schüsse",
+    "fr": "Nombre de coups",
+    "it": "Numero di colpi",
+    "en": "Number of shots"
+  },
+  "Anzahl Schüsse pro Resultat": {
+    "de": "Anzahl Schüsse pro Resultat",
+    "fr": "Nombre de tirs par résultat",
+    "it": "Numero di colpi per risultato",
+    "en": "Number of shots per result"
+  },
+  "Armbrust": {
+    "de": "Armbrust",
+    "fr": "Arbalète",
+    "it": "Balestra",
+    "en": "Crossbow"
+  },
+  "Ausloggen": {
+    "de": "Ausloggen",
+    "fr": "Se déconnecter",
+    "it": "Esci",
+    "en": "Log out"
+  },
+  "Bearbeitungsmodus aktiv": {
+    "de": "Bearbeitungsmodus aktiv",
+    "fr": "Mode édition actif",
+    "it": "Modalità di modifica attiva",
+    "en": "Editing mode active"
+  },
+  "Bemerkung": {
+    "de": "Bemerkung",
+    "fr": "Remarque",
+    "it": "Osservazione",
+    "en": "Remark"
+  },
+  "Bester Ø": {
+    "de": "Bester Ø",
+    "fr": "Meilleur Ø",
+    "it": "Miglior Ø",
+    "en": "Best Ø"
+  },
+  "Bestes Resultat": {
+    "de": "Bestes Resultat",
+    "fr": "Meilleur résultat",
+    "it": "Miglior risultato",
+    "en": "Best result"
+  },
+  "Bestes Resultat der letzten 12 Monate": {
+    "de": "Bestes Resultat der letzten 12 Monate",
+    "fr": "Meilleur résultat des 12 derniers mois",
+    "it": "Miglior risultato degli ultimi 12 mesi",
+    "en": "Best result over the last 12 months"
+  },
+  "Bezeichnung *": {
+    "de": "Bezeichnung *",
+    "fr": "Descriptif *",
+    "it": "Descrizione *",
+    "en": "Description *"
+  },
+  "Bildschirm bleibt während der Resultaterfassung aktiv.": {
+    "de": "Bildschirm bleibt während der Resultaterfassung aktiv.",
+    "fr": "L'écran reste actif pendant l'enregistrement des résultats.",
+    "it": "Lo schermo rimane attivo durante la registrazione dei risultati.",
+    "en": "Screen remains active while results are being recorded."
+  },
+  "Bitte Anzahl Schüsse und Total korrekt eingeben.": {
+    "de": "Bitte Anzahl Schüsse und Total korrekt eingeben.",
+    "fr": "Veuillez saisir correctement le nombre de prises de vue et le total.",
+    "it": "Inserisci correttamente il numero di scatti e il totale.",
+    "en": "Please enter the number of shots and total correctly."
+  },
+  "Bitte Datum und Uhrzeit eingeben.": {
+    "de": "Bitte Datum und Uhrzeit eingeben.",
+    "fr": "Veuillez entrer la date et l'heure.",
+    "it": "Inserisci data e ora.",
+    "en": "Please enter date and time."
+  },
+  "Bitte ein Sportgerät auswählen.": {
+    "de": "Bitte ein Sportgerät auswählen.",
+    "fr": "Veuillez sélectionner un équipement de sport.",
+    "it": "Seleziona un pezzo di attrezzatura sportiva.",
+    "en": "Please select a piece of sports equipment."
+  },
+  "Bitte eine Distanz auswählen.": {
+    "de": "Bitte eine Distanz auswählen.",
+    "fr": "Veuillez sélectionner une distance.",
+    "it": "Seleziona una distanza.",
+    "en": "Please select a distance."
+  },
+  "Bitte eine gültige Distanz eingeben.": {
+    "de": "Bitte eine gültige Distanz eingeben.",
+    "fr": "Veuillez entrer une distance valide.",
+    "it": "Inserisci una distanza valida.",
+    "en": "Please enter a valid distance."
+  },
+  "Bitte eine Stellung auswählen.": {
+    "de": "Bitte eine Stellung auswählen.",
+    "fr": "Veuillez sélectionner un poste.",
+    "it": "Seleziona una posizione.",
+    "en": "Please select a position."
+  },
+  "Bogen": {
+    "de": "Bogen",
+    "fr": "arc",
+    "it": "arco",
+    "en": "bow"
+  },
+  "Breitengrad": {
+    "de": "Breitengrad",
+    "fr": "Latitude",
+    "it": "Latitudine",
+    "en": "Latitude"
+  },
+  "Dashboard wird geladen...": {
+    "de": "Dashboard wird geladen...",
+    "fr": "Chargement du tableau de bord...",
+    "it": "Caricamento dashboard...",
+    "en": "Loading dashboard..."
+  },
+  "Datum": {
+    "de": "Datum",
+    "fr": "Date",
+    "it": "Data",
+    "en": "Date"
+  },
+  "Datum und Uhrzeit": {
+    "de": "Datum und Uhrzeit",
+    "fr": "Date et heure",
+    "it": "Data e ora",
+    "en": "Date and time"
+  },
+  "Deaktivieren": {
+    "de": "Deaktivieren",
+    "fr": "Désactiver",
+    "it": "Disabilita",
+    "en": "Disable"
+  },
+  "Deine bisherigen Trainings und Resultate.": {
+    "de": "Deine bisherigen Trainings und Resultate.",
+    "fr": "Votre formation précédente et vos résultats.",
+    "it": "Il tuo allenamento precedente e i tuoi risultati.",
+    "en": "Your previous training and results."
+  },
+  "Deine Entwicklung analysieren.": {
+    "de": "Deine Entwicklung analysieren.",
+    "fr": "Analysez votre évolution.",
+    "it": "Analizza il tuo sviluppo.",
+    "en": "Analyze your development."
+  },
+  "Deine Resultate. Deine Entwicklung.": {
+    "de": "Deine Resultate. Deine Entwicklung.",
+    "fr": "Vos résultats. Votre développement.",
+    "it": "I tuoi risultati. Il tuo sviluppo.",
+    "en": "Your results. Your development."
+  },
+  "Details ansehen →": {
+    "de": "Details ansehen →",
+    "fr": "Voir les détails →",
+    "it": "Visualizza i dettagli →",
+    "en": "View details →"
+  },
+  "Die Zahl im Treffer entspricht der Schussnummer.": {
+    "de": "Die Zahl im Treffer entspricht der Schussnummer.",
+    "fr": "Le numéro dans la touche correspond au numéro du coup.",
+    "it": "Il numero nel colpo corrisponde al numero del colpo.",
+    "en": "The number in the hit corresponds to the shot number."
+  },
+  "Dieses Resultat ist nicht verfügbar.": {
+    "de": "Dieses Resultat ist nicht verfügbar.",
+    "fr": "Ce résultat n'est pas disponible.",
+    "it": "Questo risultato non è disponibile.",
+    "en": "This result is not available."
+  },
+  "Distanz": {
+    "de": "Distanz",
+    "fr": "Distance",
+    "it": "Distanza",
+    "en": "Distance"
+  },
+  "Distanz entfernen": {
+    "de": "Distanz entfernen",
+    "fr": "Supprimer la distance",
+    "it": "Togliere distanza",
+    "en": "Remove distance"
+  },
+  "Distanzen": {
+    "de": "Distanzen",
+    "fr": "Distances",
+    "it": "Distanze",
+    "en": "Distances"
+  },
+  "Disziplin": {
+    "de": "Disziplin",
+    "fr": "Discipline",
+    "it": "Disciplina",
+    "en": "Discipline"
+  },
+  "Du kannst dieses Resultat bearbeiten oder löschen.": {
+    "de": "Du kannst dieses Resultat bearbeiten oder löschen.",
+    "fr": "Vous pouvez modifier ou supprimer ce résultat.",
+    "it": "Puoi modificare o eliminare questo risultato.",
+    "en": "You can edit or delete this result."
+  },
+  "Durchschnitt": {
+    "de": "Durchschnitt",
+    "fr": "Moyenne",
+    "it": "Nella media",
+    "en": "Average"
+  },
+  "Durchschnitt der letzten 12 Monate": {
+    "de": "Durchschnitt der letzten 12 Monate",
+    "fr": "Moyenne des 12 derniers mois",
+    "it": "Media degli ultimi 12 mesi",
+    "en": "Average over the last 12 months"
+  },
+  "Durchschnitt pro Schuss": {
+    "de": "Durchschnitt pro Schuss",
+    "fr": "Moyenne par coup",
+    "it": "Media per scatto",
+    "en": "Average per shot"
+  },
+  "Durchschnitt pro Schuss und Anzahl Schüsse pro Resultat.": {
+    "de": "Durchschnitt pro Schuss und Anzahl Schüsse pro Resultat.",
+    "fr": "Moyenne par tir et nombre de tirs par résultat.",
+    "it": "Media per tiro e numero di tiri per risultato.",
+    "en": "Average per shot and number of shots per result."
+  },
+  "EasyShooter": {
+    "de": "EasyShooter",
+    "fr": "EasyShooter",
+    "it": "EasyShooter",
+    "en": "EasyShooter"
+  },
+  "Eingabeart": {
+    "de": "Eingabeart",
+    "fr": "Type d'entrée",
+    "it": "Tipo di ingresso",
+    "en": "Input type"
+  },
+  "Einzelschüsse": {
+    "de": "Einzelschüsse",
+    "fr": "Coups uniques",
+    "it": "Scatti singoli",
+    "en": "Single shots"
+  },
+  "Einzelschüsse bearbeiten": {
+    "de": "Einzelschüsse bearbeiten",
+    "fr": "Modifier des photos individuelles",
+    "it": "Modifica singoli scatti",
+    "en": "Edit individual shots"
+  },
+  "equipment_positions": {
+    "de": "equipment_positions",
+    "fr": "équipements_positions",
+    "it": "posizioni_attrezzatura",
+    "en": "equipment_positions"
+  },
+  "Erfasse dein erstes Schiessresultat.": {
+    "de": "Erfasse dein erstes Schiessresultat.",
+    "fr": "Enregistrez votre premier résultat de tir.",
+    "it": "Registra il tuo primo risultato di tiro.",
+    "en": "Record your first shooting result."
+  },
+  "Erfasse den ersten Schiessstand.": {
+    "de": "Erfasse den ersten Schiessstand.",
+    "fr": "Capturez le premier champ de tir.",
+    "it": "Cattura il primo poligono di tiro.",
+    "en": "Capture the first shooting range."
+  },
+  "Erfasse rechts dein erstes Sportgerät.": {
+    "de": "Erfasse rechts dein erstes Sportgerät.",
+    "fr": "Capturez votre premier équipement de sport à droite.",
+    "it": "Cattura il tuo primo pezzo di attrezzatura sportiva sulla destra.",
+    "en": "Capture your first piece of sports equipment on the right."
+  },
+  "Erfasse zuerst einige Resultate.": {
+    "de": "Erfasse zuerst einige Resultate.",
+    "fr": "Collectez d’abord quelques résultats.",
+    "it": "Raccogli prima alcuni risultati.",
+    "en": "Collect some results first."
+  },
+  "Erfassung": {
+    "de": "Erfassung",
+    "fr": "Capturer",
+    "it": "Cattura",
+    "en": "Capture"
+  },
+  "Fehler beim Laden der Einzelschüsse:": {
+    "de": "Fehler beim Laden der Einzelschüsse:",
+    "fr": "Erreur lors du chargement des prises de vue uniques :",
+    "it": "Errore nel caricamento di scatti singoli:",
+    "en": "Error loading single shots:"
+  },
+  "Fehler beim Laden der Sportgeräte:": {
+    "de": "Fehler beim Laden der Sportgeräte:",
+    "fr": "Erreur lors du chargement des équipements sportifs :",
+    "it": "Errore durante il caricamento dell'attrezzatura sportiva:",
+    "en": "Error loading sports equipment:"
+  },
+  "Freies Training": {
+    "de": "Freies Training",
+    "fr": "Entraînement libre",
+    "it": "Allenamento libero",
+    "en": "Free training"
+  },
+  "Für die gewählten Filter sind keine Resultate vorhanden.": {
+    "de": "Für die gewählten Filter sind keine Resultate vorhanden.",
+    "fr": "Il n'y a aucun résultat pour les filtres sélectionnés.",
+    "it": "Non ci sono risultati per i filtri selezionati.",
+    "en": "There are no results for the selected filters."
+  },
+  "Für diesen Schuss ist noch keine Position gespeichert.": {
+    "de": "Für diesen Schuss ist noch keine Position gespeichert.",
+    "fr": "Aucune position n'a encore été enregistrée pour cette prise de vue.",
+    "it": "Non è ancora stata salvata alcuna posizione per questo scatto.",
+    "en": "There is no position saved for this shot yet."
+  },
+  "Gewehr": {
+    "de": "Gewehr",
+    "fr": "fusil",
+    "it": "fucile",
+    "en": "rifle"
+  },
+  "Hersteller": {
+    "de": "Hersteller",
+    "fr": "Fabricant",
+    "it": "Produttore",
+    "en": "Manufacturer"
+  },
+  "Hier findest du deine Resultate, Sportgeräte und Statistiken.": {
+    "de": "Hier findest du deine Resultate, Sportgeräte und Statistiken.",
+    "fr": "Vous trouverez ici vos résultats, équipements sportifs et statistiques.",
+    "it": "Qui troverai i tuoi risultati, attrezzature sportive e statistiche.",
+    "en": "Here you will find your results, sports equipment and statistics."
+  },
+  "Hinterlege die Distanzen, auf denen dieses Sportgerät verwendet wird.": {
+    "de": "Hinterlege die Distanzen, auf denen dieses Sportgerät verwendet wird.",
+    "fr": "Saisissez les distances sur lesquelles cet équipement sportif est utilisé.",
+    "it": "Inserisci le distanze su cui viene utilizzata questa attrezzatura sportiva.",
+    "en": "Enter the distances over which this sports equipment is used."
+  },
+  "Iris:": {
+    "de": "Iris:",
+    "fr": "Iris :",
+    "it": "Iride:",
+    "en": "Iris:"
+  },
+  "Irisblende": {
+    "de": "Irisblende",
+    "fr": "Diaphragme à iris",
+    "it": "Diaframma dell'iride",
+    "en": "Iris diaphragm"
+  },
+  "Kategorie *": {
+    "de": "Kategorie *",
+    "fr": "Catégorie *",
+    "it": "Categoria *",
+    "en": "Category *"
+  },
+  "Kein Schiessstand": {
+    "de": "Kein Schiessstand",
+    "fr": "Pas de stand de tir",
+    "it": "Nessun poligono di tiro",
+    "en": "No shooting range"
+  },
+  "Kein Sportgerät vorhanden": {
+    "de": "Kein Sportgerät vorhanden",
+    "fr": "Aucun équipement sportif disponible",
+    "it": "Nessuna attrezzatura sportiva disponibile",
+    "en": "No sports equipment available"
+  },
+  "Kein Vergleichszeitraum vorhanden": {
+    "de": "Kein Vergleichszeitraum vorhanden",
+    "fr": "Aucune période de comparaison disponible",
+    "it": "Nessun periodo di confronto disponibile",
+    "en": "No comparison period available"
+  },
+  "Keine Distanz hinterlegt": {
+    "de": "Keine Distanz hinterlegt",
+    "fr": "Aucune distance enregistrée",
+    "it": "Nessuna distanza memorizzata",
+    "en": "No distance stored"
+  },
+  "Keine Einstellung": {
+    "de": "Keine Einstellung",
+    "fr": "Aucune attitude",
+    "it": "Nessun atteggiamento",
+    "en": "No attitude"
+  },
+  "Keine Position gespeichert": {
+    "de": "Keine Position gespeichert",
+    "fr": "Aucune position enregistrée",
+    "it": "Nessuna posizione salvata",
+    "en": "No position saved"
+  },
+  "Keine Resultate gefunden": {
+    "de": "Keine Resultate gefunden",
+    "fr": "Aucun résultat trouvé",
+    "it": "Nessun risultato trovato",
+    "en": "No results found"
+  },
+  "Keine Stellung hinterlegt": {
+    "de": "Keine Stellung hinterlegt",
+    "fr": "Aucune position enregistrée",
+    "it": "Nessuna posizione memorizzata",
+    "en": "No position stored"
+  },
+  "Keine weiteren Schiessstände gefunden.": {
+    "de": "Keine weiteren Schiessstände gefunden.",
+    "fr": "Aucun autre champ de tir trouvé.",
+    "it": "Nessun altro poligono di tiro trovato.",
+    "en": "No other shooting ranges found."
+  },
+  "Korn": {
+    "de": "Korn",
+    "fr": "céréales",
+    "it": "grano",
+    "en": "grain"
+  },
+  "Korn:": {
+    "de": "Korn:",
+    "fr": "Céréales :",
+    "it": "Grano:",
+    "en": "Grain:"
+  },
+  "Korneinstellung": {
+    "de": "Korneinstellung",
+    "fr": "Ajustement des grains",
+    "it": "Regolazione della grana",
+    "en": "Grain adjustment"
+  },
+  "Korrigiere den Wert oder die Position eines Schusses.": {
+    "de": "Korrigiere den Wert oder die Position eines Schusses.",
+    "fr": "Corriger la valeur ou la position d'un tir.",
+    "it": "Correggere il valore o la posizione di un tiro.",
+    "en": "Correct the value or position of a shot."
+  },
+  "Längengrad": {
+    "de": "Längengrad",
+    "fr": "Longitude",
+    "it": "Longitudine",
+    "en": "Longitude"
+  },
+  "Lege ein neues Passwort für dein Konto fest.": {
+    "de": "Lege ein neues Passwort für dein Konto fest.",
+    "fr": "Définissez un nouveau mot de passe pour votre compte.",
+    "it": "Imposta una nuova password per il tuo account.",
+    "en": "Set a new password for your account."
+  },
+  "Leistungsentwicklung": {
+    "de": "Leistungsentwicklung",
+    "fr": "Développement des performances",
+    "it": "Sviluppo delle prestazioni",
+    "en": "Performance development"
+  },
+  "Letztes Resultat": {
+    "de": "Letztes Resultat",
+    "fr": "Résultat final",
+    "it": "Risultato finale",
+    "en": "Final result"
+  },
+  "Letztes Resultat konnte nicht geladen werden:": {
+    "de": "Letztes Resultat konnte nicht geladen werden:",
+    "fr": "Le dernier résultat n'a pas pu être chargé :",
+    "it": "Impossibile caricare l'ultimo risultato:",
+    "en": "Last result could not be loaded:"
+  },
+  "Maximum": {
+    "de": "Maximum",
+    "fr": "Maximale",
+    "it": "Massimo",
+    "en": "Maximum"
+  },
+  "Mein Dashboard": {
+    "de": "Mein Dashboard",
+    "fr": "Mon tableau de bord",
+    "it": "Il mio cruscotto",
+    "en": "My dashboard"
+  },
+  "Meine Resultate": {
+    "de": "Meine Resultate",
+    "fr": "Mes résultats",
+    "it": "I miei risultati",
+    "en": "My results"
+  },
+  "Meine Sportgeräte": {
+    "de": "Meine Sportgeräte",
+    "fr": "Mon équipement de sport",
+    "it": "La mia attrezzatura sportiva",
+    "en": "My sports equipment"
+  },
+  "Minimum": {
+    "de": "Minimum",
+    "fr": "Minimum",
+    "it": "Minimo",
+    "en": "Minimum"
+  },
+  "Mittlere Trefferlage": {
+    "de": "Mittlere Trefferlage",
+    "fr": "Position de frappe moyenne",
+    "it": "Posizione di colpo medio",
+    "en": "Medium hit position"
+  },
+  "mm": {
+    "de": "mm",
+    "fr": "mm",
+    "it": "mm",
+    "en": "mm"
+  },
+  "Möchtest du diesen Schiessstand wirklich deaktivieren?": {
+    "de": "Möchtest du diesen Schiessstand wirklich deaktivieren?",
+    "fr": "Voulez-vous vraiment désactiver ce stand de tir ?",
+    "it": "Vuoi davvero disattivare questo poligono di tiro?",
+    "en": "Do you really want to deactivate this shooting range?"
+  },
+  "Möchtest du dieses Resultat wirklich löschen? Die Einzelschüsse werden ebenfalls gelöscht.": {
+    "de": "Möchtest du dieses Resultat wirklich löschen? Die Einzelschüsse werden ebenfalls gelöscht.",
+    "fr": "Voulez-vous vraiment supprimer ce résultat ? Les prises de vue individuelles sont également supprimées.",
+    "it": "Vuoi davvero eliminare questo risultato? Vengono cancellati anche i singoli scatti.",
+    "en": "Do you really want to delete this result? The individual shots are also deleted."
+  },
+  "Modell": {
+    "de": "Modell",
+    "fr": "modèle",
+    "it": "modello",
+    "en": "model"
+  },
+  "Modus": {
+    "de": "Modus",
+    "fr": "mode",
+    "it": "modalità",
+    "en": "mode"
+  },
+  "Nach Disziplin und Schusszahl": {
+    "de": "Nach Disziplin und Schusszahl",
+    "fr": "Selon la discipline et le nombre de tirs",
+    "it": "Secondo disciplina e numero di colpi",
+    "en": "According to discipline and number of shots"
+  },
+  "Neuer Durchschnitt": {
+    "de": "Neuer Durchschnitt",
+    "fr": "Nouvelle moyenne",
+    "it": "Nuova media",
+    "en": "New average"
+  },
+  "Neues Passwort": {
+    "de": "Neues Passwort",
+    "fr": "Nouveau mot de passe",
+    "it": "Nuova password",
+    "en": "New password"
+  },
+  "Neues Resultat": {
+    "de": "Neues Resultat",
+    "fr": "Nouveau résultat",
+    "it": "Nuovo risultato",
+    "en": "New result"
+  },
+  "Neues Total": {
+    "de": "Neues Total",
+    "fr": "Nouveau total",
+    "it": "Nuovo totale",
+    "en": "New total"
+  },
+  "Noch kein Resultat vorhanden.": {
+    "de": "Noch kein Resultat vorhanden.",
+    "fr": "Aucun résultat encore disponible.",
+    "it": "Nessun risultato ancora disponibile.",
+    "en": "No result yet available."
+  },
+  "Noch keine Resultate": {
+    "de": "Noch keine Resultate",
+    "fr": "Aucun résultat pour l'instant",
+    "it": "Nessun risultato ancora",
+    "en": "No results yet"
+  },
+  "Noch keine Schiessstände vorhanden": {
+    "de": "Noch keine Schiessstände vorhanden",
+    "fr": "Pas encore de stands de tir",
+    "it": "Nessun poligono di tiro ancora",
+    "en": "No shooting ranges yet"
+  },
+  "Noch keine Sportgeräte": {
+    "de": "Noch keine Sportgeräte",
+    "fr": "Pas encore d'équipement de sport",
+    "it": "Nessuna attrezzatura sportiva ancora",
+    "en": "No sports equipment yet"
+  },
+  "Noch keine Statistik verfügbar": {
+    "de": "Noch keine Statistik verfügbar",
+    "fr": "Aucune statistique disponible pour l'instant",
+    "it": "Nessuna statistica ancora disponibile",
+    "en": "No statistics available yet"
+  },
+  "Notiz": {
+    "de": "Notiz",
+    "fr": "Remarque",
+    "it": "Nota",
+    "en": "Note"
+  },
+  "Nur Total erfasst": {
+    "de": "Nur Total erfasst",
+    "fr": "Total capturé uniquement",
+    "it": "Solo totale catturato",
+    "en": "Total captured only"
+  },
+  "Ø pro Schuss": {
+    "de": "Ø pro Schuss",
+    "fr": "Ø par coup",
+    "it": "Ø per colpo",
+    "en": "Ø per shot"
+  },
+  "ohne Position": {
+    "de": "ohne Position",
+    "fr": "sans poste",
+    "it": "senza posizione",
+    "en": "without position"
+  },
+  "Optional": {
+    "de": "Optional",
+    "fr": "Facultatif",
+    "it": "Facoltativo",
+    "en": "Optional"
+  },
+  "Optional...": {
+    "de": "Optional...",
+    "fr": "En option...",
+    "it": "Facoltativo...",
+    "en": "Optional..."
+  },
+  "Optionale Einstellbereiche für Irisblende und Korn.": {
+    "de": "Optionale Einstellbereiche für Irisblende und Korn.",
+    "fr": "Plages de réglage en option pour le diaphragme à iris et le guidon.",
+    "it": "Intervalli di regolazione opzionali per diaframma a iride e mirino.",
+    "en": "Optional adjustment ranges for iris diaphragm and front sight."
+  },
+  "Ort": {
+    "de": "Ort",
+    "fr": "Emplacement",
+    "it": "Posizione",
+    "en": "Location"
+  },
+  "Passe die Angaben zu diesem Resultat an.": {
+    "de": "Passe die Angaben zu diesem Resultat an.",
+    "fr": "Ajustez les informations pour ce résultat.",
+    "it": "Modifica le informazioni per questo risultato.",
+    "en": "Adjust the information for this result."
+  },
+  "Passwort ändern": {
+    "de": "Passwort ändern",
+    "fr": "Changer le mot de passe",
+    "it": "Cambia password",
+    "en": "Change password"
+  },
+  "Passwort bestätigen": {
+    "de": "Passwort bestätigen",
+    "fr": "Confirmer le mot de passe",
+    "it": "Conferma la password",
+    "en": "Confirm password"
+  },
+  "Passwort wurde erfolgreich geändert.": {
+    "de": "Passwort wurde erfolgreich geändert.",
+    "fr": "Le mot de passe a été modifié avec succès.",
+    "it": "La password è stata modificata con successo.",
+    "en": "Password was changed successfully."
+  },
+  "Persönliche Angaben verwalten.": {
+    "de": "Persönliche Angaben verwalten.",
+    "fr": "Gérer les informations personnelles.",
+    "it": "Gestire le informazioni personali.",
+    "en": "Manage personal information."
+  },
+  "Pistole": {
+    "de": "Pistole",
+    "fr": "Pistolet",
+    "it": "Pistola",
+    "en": "Pistol"
+  },
+  "PLZ": {
+    "de": "PLZ",
+    "fr": "Code postal",
+    "it": "Codice postale",
+    "en": "ZIP code"
+  },
+  "Position bearbeiten": {
+    "de": "Position bearbeiten",
+    "fr": "Modifier le poste",
+    "it": "Modifica posizione",
+    "en": "Edit position"
+  },
+  "Position schließen": {
+    "de": "Position schließen",
+    "fr": "Position fermée",
+    "it": "Posizione chiusa",
+    "en": "Close position"
+  },
+  "Position vorhanden": {
+    "de": "Position vorhanden",
+    "fr": "Poste disponible",
+    "it": "Posizione disponibile",
+    "en": "Position available"
+  },
+  "Profil": {
+    "de": "Profil",
+    "fr": "Profil",
+    "it": "Profilo",
+    "en": "Profile"
+  },
+  "Resultat bearbeiten": {
+    "de": "Resultat bearbeiten",
+    "fr": "Modifier le résultat",
+    "it": "Modifica risultato",
+    "en": "Edit result"
+  },
+  "Resultat erfassen": {
+    "de": "Resultat erfassen",
+    "fr": "Capturez le résultat",
+    "it": "Cattura il risultato",
+    "en": "Capture the result"
+  },
+  "Resultat gespeichert. Nächstes Resultat kann erfasst werden.": {
+    "de": "Resultat gespeichert. Nächstes Resultat kann erfasst werden.",
+    "fr": "Résultat enregistré. Le résultat suivant peut être enregistré.",
+    "it": "Risultato salvato. Il risultato successivo può essere registrato.",
+    "en": "Result saved. Next result can be recorded."
+  },
+  "Resultat löschen": {
+    "de": "Resultat löschen",
+    "fr": "Supprimer le résultat",
+    "it": "Elimina risultato",
+    "en": "Delete result"
+  },
+  "Resultat nicht gefunden": {
+    "de": "Resultat nicht gefunden",
+    "fr": "Résultat introuvable",
+    "it": "Risultato non trovato",
+    "en": "Result not found"
+  },
+  "Resultat speichern": {
+    "de": "Resultat speichern",
+    "fr": "Enregistrer le résultat",
+    "it": "Salva risultato",
+    "en": "Save result"
+  },
+  "Resultat verwalten": {
+    "de": "Resultat verwalten",
+    "fr": "Gérer le résultat",
+    "it": "Gestisci il risultato",
+    "en": "Manage result"
+  },
+  "Resultat wird geladen...": {
+    "de": "Resultat wird geladen...",
+    "fr": "Chargement du résultat...",
+    "it": "Caricamento risultato...",
+    "en": "Loading result..."
+  },
+  "Resultate": {
+    "de": "Resultate",
+    "fr": "Résultats",
+    "it": "Risultati",
+    "en": "Results"
+  },
+  "Resultate werden geladen...": {
+    "de": "Resultate werden geladen...",
+    "fr": "Chargement des résultats...",
+    "it": "Caricamento risultati...",
+    "en": "Loading results..."
+  },
+  "Schiessresultate erfassen, verwalten und auswerten.": {
+    "de": "Schiessresultate erfassen, verwalten und auswerten.",
+    "fr": "Enregistrez, gérez et évaluez les résultats de tournage.",
+    "it": "Registra, gestisci e valuta i risultati delle riprese.",
+    "en": "Record, manage and evaluate shooting results."
+  },
+  "Schiessstand": {
+    "de": "Schiessstand",
+    "fr": "Champ de tir",
+    "it": "Poligono di tiro",
+    "en": "Shooting range"
+  },
+  "Schiessstand bearbeiten": {
+    "de": "Schiessstand bearbeiten",
+    "fr": "Modifier le champ de tir",
+    "it": "Modifica il poligono di tiro",
+    "en": "Edit shooting range"
+  },
+  "Schiessstand hinzufügen": {
+    "de": "Schiessstand hinzufügen",
+    "fr": "Ajouter un champ de tir",
+    "it": "Aggiungi poligono di tiro",
+    "en": "Add shooting range"
+  },
+  "Schiessstand speichern": {
+    "de": "Schiessstand speichern",
+    "fr": "Enregistrer le champ de tir",
+    "it": "Salva poligono di tiro",
+    "en": "Save shooting range"
+  },
+  "Schiessstand suchen": {
+    "de": "Schiessstand suchen",
+    "fr": "Trouver un stand de tir",
+    "it": "Trova un poligono di tiro",
+    "en": "Find a shooting range"
+  },
+  "Schiessstände": {
+    "de": "Schiessstände",
+    "fr": "Stands de tir",
+    "it": "Poligoni di tiro",
+    "en": "Shooting ranges"
+  },
+  "Schiessstände suchen, favorisieren und verwalten.": {
+    "de": "Schiessstände suchen, favorisieren und verwalten.",
+    "fr": "Recherchez, favoris et gérez les champs de tir.",
+    "it": "Cerca, aggiungi ai preferiti e gestisci i poligoni di tiro.",
+    "en": "Search for, favorite and manage shooting ranges."
+  },
+  "Schuss": {
+    "de": "Schuss",
+    "fr": "Tir",
+    "it": "Sparato",
+    "en": "Shot"
+  },
+  "Schuss übernehmen": {
+    "de": "Schuss übernehmen",
+    "fr": "Prendre une photo",
+    "it": "Scatta",
+    "en": "Take shot"
+  },
+  "Schussbild": {
+    "de": "Schussbild",
+    "fr": "Image prise",
+    "it": "Immagine ripresa",
+    "en": "Shot image"
+  },
+  "Schüsse": {
+    "de": "Schüsse",
+    "fr": "Coups",
+    "it": "Colpi",
+    "en": "Shots"
+  },
+  "Schüsse erfassen": {
+    "de": "Schüsse erfassen",
+    "fr": "Capturer des photos",
+    "it": "Cattura scatti",
+    "en": "Capture shots"
+  },
+  "Schüsse insgesamt": {
+    "de": "Schüsse insgesamt",
+    "fr": "Nombre total de tirs",
+    "it": "Scatti totali",
+    "en": "Total shots"
+  },
+  "Schussmodus": {
+    "de": "Schussmodus",
+    "fr": "Mode de prise de vue",
+    "it": "Modalità di scatto",
+    "en": "Shooting mode"
+  },
+  "Seriennummer": {
+    "de": "Seriennummer",
+    "fr": "Numéro de série",
+    "it": "Numero di serie",
+    "en": "Serial number"
+  },
+  "shot.x_position !== null && shot.y_position !== null) && (": {
+    "de": "shot.x_position !== null && shot.y_position !== null) && (",
+    "fr": "shot.x_position !== null && shot.y_position !== null) && (",
+    "it": "tiro.x_posizione !== null && tiro.y_posizione !== null) && (",
+    "en": "shot.x_position !== null && shot.y_position !== null) && ("
+  },
+  "Speichern & nächstes Resultat": {
+    "de": "Speichern & nächstes Resultat",
+    "fr": "Enregistrer et résultat suivant",
+    "it": "Salva e risultato successivo",
+    "en": "Save & next result"
+  },
+  "Sportgerät": {
+    "de": "Sportgerät",
+    "fr": "Équipement sportif",
+    "it": "Attrezzatura sportiva",
+    "en": "Sports equipment"
+  },
+  "Sportgerät auswählen": {
+    "de": "Sportgerät auswählen",
+    "fr": "Sélectionner des équipements sportifs",
+    "it": "Seleziona l'attrezzatura sportiva",
+    "en": "Select sports equipment"
+  },
+  "Sportgerät speichern": {
+    "de": "Sportgerät speichern",
+    "fr": "Sauver les équipements sportifs",
+    "it": "Conservare l'attrezzatura sportiva",
+    "en": "Save sports equipment"
+  },
+  "Sportgerät wurde aktualisiert.": {
+    "de": "Sportgerät wurde aktualisiert.",
+    "fr": "Les équipements sportifs ont été mis à jour.",
+    "it": "L'attrezzatura sportiva è stata aggiornata.",
+    "en": "Sports equipment has been updated."
+  },
+  "Sportgerät wurde gespeichert.": {
+    "de": "Sportgerät wurde gespeichert.",
+    "fr": "Les équipements sportifs ont été sauvés.",
+    "it": "L'attrezzatura sportiva è stata salvata.",
+    "en": "Sports equipment has been saved."
+  },
+  "Sportgeräte": {
+    "de": "Sportgeräte",
+    "fr": "Équipement sportif",
+    "it": "Attrezzatura sportiva",
+    "en": "Sports equipment"
+  },
+  "Sportgeräte verwalten.": {
+    "de": "Sportgeräte verwalten.",
+    "fr": "Gérer les équipements sportifs.",
+    "it": "Gestire le attrezzature sportive.",
+    "en": "Manage sports equipment."
+  },
+  "Statistiken": {
+    "de": "Statistiken",
+    "fr": "Statistiques",
+    "it": "Statistiche",
+    "en": "Statistics"
+  },
+  "Statistiken werden geladen...": {
+    "de": "Statistiken werden geladen...",
+    "fr": "Chargement des statistiques...",
+    "it": "Caricamento statistiche...",
+    "en": "Loading statistics..."
+  },
+  "Stellung": {
+    "de": "Stellung",
+    "fr": "poste",
+    "it": "posizione",
+    "en": "position"
+  },
+  "Stellungen": {
+    "de": "Stellungen",
+    "fr": "postes",
+    "it": "posizioni",
+    "en": "positions"
+  },
+  "Streuung": {
+    "de": "Streuung",
+    "fr": "Dispersion",
+    "it": "Dispersione",
+    "en": "Spread"
+  },
+  "time === shootingHour ); if (index === undefined || index": {
+    "de": "time === shootingHour ); if (index === undefined || index",
+    "fr": "time === shootingHour ); si (index === non défini || index",
+    "it": "ora === ora di ripresa); if (indice === non definito || indice",
+    "en": "time === shootingHour ); if (index === undefined || index"
+  },
+  "time === shootingHour); if (index === undefined || index": {
+    "de": "time === shootingHour); if (index === undefined || index",
+    "fr": "heure === heure de prise de vue); si (index === non défini || index",
+    "it": "ora === ora di ripresa); if (indice === non definito || indice",
+    "en": "time === shootingHour); if (index === undefined || index"
+  },
+  "Tippe auf einen roten Punkt, um das Resultat anzuzeigen.": {
+    "de": "Tippe auf einen roten Punkt, um das Resultat anzuzeigen.",
+    "fr": "Appuyez sur un point rouge pour voir le résultat.",
+    "it": "Tocca un punto rosso per vedere il risultato.",
+    "en": "Tap a red dot to see the result."
+  },
+  "Tippe oder klicke auf die Scheibe.": {
+    "de": "Tippe oder klicke auf die Scheibe.",
+    "fr": "Appuyez ou cliquez sur le disque.",
+    "it": "Tocca o fai clic sul disco.",
+    "en": "Tap or click on the disk."
+  },
+  "Total": {
+    "de": "Total",
+    "fr": "Total",
+    "it": "Totale",
+    "en": "Total"
+  },
+  "Training": {
+    "de": "Training",
+    "fr": "Formation",
+    "it": "Formazione",
+    "en": "Training"
+  },
+  "Trainings und Resultate ansehen.": {
+    "de": "Trainings und Resultate ansehen.",
+    "fr": "Afficher la formation et les résultats.",
+    "it": "Visualizza la formazione e i risultati.",
+    "en": "View training and results."
+  },
+  "Treffer": {
+    "de": "Treffer",
+    "fr": "Frapper",
+    "it": "Colpisci",
+    "en": "Hit"
+  },
+  "Trefferlage": {
+    "de": "Trefferlage",
+    "fr": "Emplacement du coup",
+    "it": "Colpisci la posizione",
+    "en": "Hit location"
+  },
+  "Unbekannter Fehler": {
+    "de": "Unbekannter Fehler",
+    "fr": "Erreur inconnue",
+    "it": "Errore sconosciuto",
+    "en": "Unknown error"
+  },
+  "Ungültiges Resultat.": {
+    "de": "Ungültiges Resultat.",
+    "fr": "Résultat invalide.",
+    "it": "Risultato non valido.",
+    "en": "Invalid result."
+  },
+  "Verfügbare Schiessstände": {
+    "de": "Verfügbare Schiessstände",
+    "fr": "Stands de tir disponibles",
+    "it": "Poligoni di tiro disponibili",
+    "en": "Available shooting ranges"
+  },
+  "Vergleiche deine Leistungen nach Disziplin und Schusszahl.": {
+    "de": "Vergleiche deine Leistungen nach Disziplin und Schusszahl.",
+    "fr": "Comparez vos performances par discipline et nombre de tirs.",
+    "it": "Confronta le tue prestazioni per disciplina e numero di colpi.",
+    "en": "Compare your performance by discipline and number of shots."
+  },
+  "Verwalte deine Gewehre, Pistolen und weitere Sportgeräte.": {
+    "de": "Verwalte deine Gewehre, Pistolen und weitere Sportgeräte.",
+    "fr": "Gérez vos fusils, pistolets et autres équipements sportifs.",
+    "it": "Gestisci i tuoi fucili, pistole e altre attrezzature sportive.",
+    "en": "Manage your rifles, pistols and other sporting equipment."
+  },
+  "Verwalte und nutze gemeinsam verfügbare Schiessstände.": {
+    "de": "Verwalte und nutze gemeinsam verfügbare Schiessstände.",
+    "fr": "Gérez et utilisez des champs de tir partagés.",
+    "it": "Gestisci e utilizza poligoni di tiro condivisi.",
+    "en": "Manage and use shared shooting ranges."
+  },
+  "Visierung": {
+    "de": "Visierung",
+    "fr": "Sites touristiques",
+    "it": "Attrazioni",
+    "en": "Sights"
+  },
+  "Wähle alle Stellungen, für die dieses Sportgerät verwendet wird.": {
+    "de": "Wähle alle Stellungen, für die dieses Sportgerät verwendet wird.",
+    "fr": "Sélectionnez tous les postes pour lesquels cet équipement sportif est utilisé.",
+    "it": "Seleziona tutte le posizioni per le quali viene utilizzata questa attrezzatura sportiva.",
+    "en": "Select all positions for which this sports equipment is used."
+  },
+  "Wert": {
+    "de": "Wert",
+    "fr": "Valeur",
+    "it": "Valore",
+    "en": "Value"
+  },
+  "Wert ohne Position manuell erfassen": {
+    "de": "Wert ohne Position manuell erfassen",
+    "fr": "Saisir la valeur manuellement sans position",
+    "it": "Immettere il valore manualmente senza posizione",
+    "en": "Enter value manually without position"
+  },
+  "Wetter konnte nicht aktualisiert werden:": {
+    "de": "Wetter konnte nicht aktualisiert werden:",
+    "fr": "La météo n'a pas pu être mise à jour :",
+    "it": "Impossibile aggiornare il meteo:",
+    "en": "Weather could not be updated:"
+  },
+  "Wetter konnte nicht geladen werden:": {
+    "de": "Wetter konnte nicht geladen werden:",
+    "fr": "La météo n'a pas pu être chargée :",
+    "it": "Impossibile caricare il meteo:",
+    "en": "Weather could not be loaded:"
+  },
+  "Wird geladen...": {
+    "de": "Wird geladen...",
+    "fr": "Chargement...",
+    "it": "Caricamento...",
+    "en": "Loading..."
+  },
+  "Wird gelöscht...": {
+    "de": "Wird gelöscht...",
+    "fr": "Sera supprimé...",
+    "it": "Verrà eliminato...",
+    "en": "Will be deleted..."
+  },
+  "Wird gespeichert...": {
+    "de": "Wird gespeichert...",
+    "fr": "Enregistré...",
+    "it": "Salvato...",
+    "en": "Saved..."
+  },
+  "z.B. Schiessanlage Muster": {
+    "de": "z.B. Schiessanlage Muster",
+    "fr": "p. ex. Installation de tir Exemple",
+    "it": "es. Impianto di tiro Esempio",
+    "en": "e.g. Example Shooting Facility"
+  },
+  "Zeitraum": {
+    "de": "Zeitraum",
+    "fr": "période",
+    "it": "periodo",
+    "en": "period"
+  },
+  "🏆 Persönliche Bestleistung": {
+    "de": "🏆 Persönliche Bestleistung",
+    "fr": "🏆 Record personnel",
+    "it": "🏆 Primato personale",
+    "en": "🏆 Personal best"
+  },
+  "🔍 Anderen Schiessstand suchen...": {
+    "de": "🔍 Anderen Schiessstand suchen...",
+    "fr": "🔍Trouver un autre stand de tir...",
+    "it": "🔍 Trova un altro poligono di tiro...",
+    "en": "🔍 Find another shooting range..."
+  },
+  "Liegend": {
+    "de": "Liegend",
+    "fr": "Couché",
+    "it": "A terra",
+    "en": "Prone"
+  },
+  "Stehend": {
+    "de": "Stehend",
+    "fr": "Debout",
+    "it": "In piedi",
+    "en": "Standing"
+  },
+  "Kniend": {
+    "de": "Kniend",
+    "fr": "À genou",
+    "it": "In ginocchio",
+    "en": "Kneeling"
+  },
+  "Sitzend": {
+    "de": "Sitzend",
+    "fr": "Assis",
+    "it": "Seduto",
+    "en": "Sitting"
+  },
+  "Aufgelegt": {
+    "de": "Aufgelegt",
+    "fr": "Avec appui",
+    "it": "Con appoggio",
+    "en": "Supported"
+  },
+  "▲ Einklappen": {
+    "de": "▲ Einklappen",
+    "fr": "▲ Réduire",
+    "it": "▲ Comprimi",
+    "en": "▲ Collapse"
+  },
+  "▼ Anzeigen": {
+    "de": "▼ Anzeigen",
+    "fr": "▼ Afficher",
+    "it": "▼ Mostra",
+    "en": "▼ Show"
+  },
+  "Einklappen": {
+    "de": "Einklappen",
+    "fr": "Réduire",
+    "it": "Comprimi",
+    "en": "Collapse"
+  },
+  "Anzeigen": {
+    "de": "Anzeigen",
+    "fr": "Afficher",
+    "it": "Mostra",
+    "en": "Show"
+  },
+  "Sportgerät hinzufügen": {
+    "de": "Sportgerät hinzufügen",
+    "fr": "Ajouter une arme de sport",
+    "it": "Aggiungi un'arma sportiva",
+    "en": "Add equipment"
+  },
+  "+ Sportgerät hinzufügen": {
+    "de": "+ Sportgerät hinzufügen",
+    "fr": "+ Ajouter une arme de sport",
+    "it": "+ Aggiungi un'arma sportiva",
+    "en": "+ Add equipment"
+  },
+  "Neues Sportgerät": {
+    "de": "Neues Sportgerät",
+    "fr": "Nouvelle arme de sport",
+    "it": "Nuova arma sportiva",
+    "en": "New equipment"
+  },
+  "Nur Total": {
+    "de": "Nur Total",
+    "fr": "Total uniquement",
+    "it": "Solo totale",
+    "en": "Total only"
+  },
+  "Feste Anzahl": {
+    "de": "Feste Anzahl",
+    "fr": "Nombre fixe",
+    "it": "Numero fisso",
+    "en": "Fixed number"
+  },
+  "Schussposition": {
+    "de": "Schussposition",
+    "fr": "Position de l'impact",
+    "it": "Posizione del colpo",
+    "en": "Shot position"
+  },
+  "Perioden": {
+    "de": "Perioden",
+    "fr": "Périodes",
+    "it": "Periodi",
+    "en": "Periods"
+  },
+  "Periode": {
+    "de": "Periode",
+    "fr": "Période",
+    "it": "Periodo",
+    "en": "Period"
+  },
+  "Alle Perioden": {
+    "de": "Alle Perioden",
+    "fr": "Toutes les périodes",
+    "it": "Tutti i periodi",
+    "en": "All periods"
+  },
+  "Nach Periode": {
+    "de": "Nach Periode",
+    "fr": "Par période",
+    "it": "Per periodo",
+    "en": "By period"
+  },
+  "Schussposition und Streuung": {
+    "de": "Schussposition und Streuung",
+    "fr": "Position des impacts et dispersion",
+    "it": "Posizione dei colpi e dispersione",
+    "en": "Shot position and spread"
+  },
+  "Schussposition & Streuung": {
+    "de": "Schussposition & Streuung",
+    "fr": "Position des impacts et dispersion",
+    "it": "Posizione dei colpi e dispersione",
+    "en": "Shot position and spread"
+  },
+  "30 Tage": {
+    "de": "30 Tage",
+    "fr": "30 jours",
+    "it": "30 giorni",
+    "en": "30 days"
+  },
+  "3 Monate": {
+    "de": "3 Monate",
+    "fr": "3 mois",
+    "it": "3 mesi",
+    "en": "3 months"
+  },
+  "6 Monate": {
+    "de": "6 Monate",
+    "fr": "6 mois",
+    "it": "6 mesi",
+    "en": "6 months"
+  },
+  "12 Monate": {
+    "de": "12 Monate",
+    "fr": "12 mois",
+    "it": "12 mesi",
+    "en": "12 months"
+  },
+  "Alles": {
+    "de": "Alles",
+    "fr": "Tout",
+    "it": "Tutto",
+    "en": "All time"
+  },
+  "Temperatur:": {
+    "de": "Temperatur:",
+    "fr": "Température :",
+    "it": "Temperatura:",
+    "en": "Temperature:"
+  },
+  "Luftfeuchtigkeit:": {
+    "de": "Luftfeuchtigkeit:",
+    "fr": "Humidité :",
+    "it": "Umidità:",
+    "en": "Humidity:"
+  },
+  "Luftdruck:": {
+    "de": "Luftdruck:",
+    "fr": "Pression atmosphérique :",
+    "it": "Pressione atmosferica:",
+    "en": "Air pressure:"
+  },
+  "Wind:": {
+    "de": "Wind:",
+    "fr": "Vent :",
+    "it": "Vento:",
+    "en": "Wind:"
+  },
+  "Windrichtung:": {
+    "de": "Windrichtung:",
+    "fr": "Direction du vent :",
+    "it": "Direzione del vento:",
+    "en": "Wind direction:"
+  },
+  "Wetter:": {
+    "de": "Wetter:",
+    "fr": "Météo :",
+    "it": "Meteo:",
+    "en": "Weather:"
+  },
+  "Klar": {
+    "de": "Klar",
+    "fr": "Dégagé",
+    "it": "Sereno",
+    "en": "Clear"
+  },
+  "Leicht bewölkt": {
+    "de": "Leicht bewölkt",
+    "fr": "Peu nuageux",
+    "it": "Poco nuvoloso",
+    "en": "Partly cloudy"
+  },
+  "Bewölkt": {
+    "de": "Bewölkt",
+    "fr": "Nuageux",
+    "it": "Nuvoloso",
+    "en": "Cloudy"
+  },
+  "Nebel": {
+    "de": "Nebel",
+    "fr": "Brouillard",
+    "it": "Nebbia",
+    "en": "Fog"
+  },
+  "Nieselregen": {
+    "de": "Nieselregen",
+    "fr": "Bruine",
+    "it": "Pioviggine",
+    "en": "Drizzle"
+  },
+  "Regen": {
+    "de": "Regen",
+    "fr": "Pluie",
+    "it": "Pioggia",
+    "en": "Rain"
+  },
+  "Schnee": {
+    "de": "Schnee",
+    "fr": "Neige",
+    "it": "Neve",
+    "en": "Snow"
+  },
+  "Regenschauer": {
+    "de": "Regenschauer",
+    "fr": "Averses de pluie",
+    "it": "Rovesci di pioggia",
+    "en": "Rain showers"
+  },
+  "Schneeschauer": {
+    "de": "Schneeschauer",
+    "fr": "Averses de neige",
+    "it": "Rovesci di neve",
+    "en": "Snow showers"
+  },
+  "Gewitter": {
+    "de": "Gewitter",
+    "fr": "Orage",
+    "it": "Temporale",
+    "en": "Thunderstorm"
+  },
+  "Schiessanlage": {
+    "de": "Schiessanlage",
+    "fr": "Installation de tir",
+    "it": "Impianto di tiro",
+    "en": "Shooting facility"
+  },
+  "Schiessanlagen": {
+    "de": "Schiessanlagen",
+    "fr": "Installations de tir",
+    "it": "Impianti di tiro",
+    "en": "Shooting facilities"
+  },
+  "Schüsse aus": {
+    "de": "Schüsse aus",
+    "fr": "coups sur",
+    "it": "colpi da",
+    "en": "shots from"
+  },
+  "Resultat": {
+    "de": "Resultat",
+    "fr": "résultat",
+    "it": "risultato",
+    "en": "result"
+  },
+  "Resultaten": {
+    "de": "Resultaten",
+    "fr": "résultats",
+    "it": "risultati",
+    "en": "results"
+  },
+  "Schüsse · Ø": {
+    "de": "Schüsse · Ø",
+    "fr": "Coups · Ø",
+    "it": "Colpi · Ø",
+    "en": "Shots · Ø"
+  }
+}

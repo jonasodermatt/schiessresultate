@@ -1,164 +1,22 @@
 "use client";
-
 import { FormEvent, useState } from "react";
+import { useRouter } from "next/navigation";
+import LanguageSwitcher from "../../components/LanguageSwitcher";
+import { Language, localizeAuthError, useI18n } from "../../lib/i18n";
 import { supabase } from "../../lib/supabase";
 
+const copy: Record<Language, Record<string, string>> = {
+  de: { title: "Einloggen", intro: "Melde dich an, um deine Schiessresultate zu verwalten.", email: "E-Mail", password: "Passwort", forgot: "Passwort vergessen?", loading: "Anmeldung läuft...", submit: "Einloggen", emailFirst: "Bitte gib zuerst deine E-Mail-Adresse ein.", resetError: "Passwort-Reset konnte nicht gesendet werden", resetSent: "Wir haben dir eine E-Mail zum Zurücksetzen des Passworts gesendet.", error: "Fehler" },
+  fr: { title: "Se connecter", intro: "Connecte-toi pour gérer tes résultats de tir.", email: "E-mail", password: "Mot de passe", forgot: "Mot de passe oublié ?", loading: "Connexion en cours…", submit: "Se connecter", emailFirst: "Saisis d’abord ton adresse e-mail.", resetError: "Impossible d’envoyer la réinitialisation du mot de passe", resetSent: "Nous t’avons envoyé un e-mail pour réinitialiser ton mot de passe.", error: "Erreur" },
+  it: { title: "Accedi", intro: "Accedi per gestire i tuoi risultati di tiro.", email: "E-mail", password: "Password", forgot: "Password dimenticata?", loading: "Accesso in corso…", submit: "Accedi", emailFirst: "Inserisci prima il tuo indirizzo e-mail.", resetError: "Impossibile inviare il ripristino della password", resetSent: "Ti abbiamo inviato un’e-mail per reimpostare la password.", error: "Errore" },
+  en: { title: "Sign in", intro: "Sign in to manage your shooting results.", email: "Email", password: "Password", forgot: "Forgot password?", loading: "Signing in…", submit: "Sign in", emailFirst: "Please enter your email address first.", resetError: "The password reset could not be sent", resetSent: "We sent you an email to reset your password.", error: "Error" },
+};
+
 export default function LoginPage() {
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [message, setMessage] = useState("");
-  const [loading, setLoading] = useState(false);
-
-  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-
-    setLoading(true);
-    setMessage("");
-
-    const { error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
-
-    if (error) {
-      setMessage(`Fehler: ${error.message}`);
-      setLoading(false);
-      return;
-    }
-
-    window.location.href = "/dashboard";
-  }
-
-  async function handleForgotPassword() {
-  setMessage("");
-
-  if (!email.trim()) {
-    setMessage(
-      "Bitte gib zuerst deine E-Mail-Adresse ein."
-    );
-    return;
-  }
-
-  setLoading(true);
-
-  const { error } =
-    await supabase.auth.resetPasswordForEmail(
-      email.trim(),
-      {
-        redirectTo: `${window.location.origin}/update-password`,
-      }
-    );
-
-  if (error) {
-    setMessage(
-      `Passwort-Reset konnte nicht gesendet werden: ${error.message}`
-    );
-    setLoading(false);
-    return;
-  }
-
-  setMessage(
-    "Wir haben dir eine E-Mail zum Zurücksetzen des Passworts gesendet."
-  );
-
-  setLoading(false);
-}
-
-  return (
-    <main className="min-h-screen bg-slate-50 px-6 py-16">
-      <div className="mx-auto max-w-md">
-   <div className="flex items-center justify-center gap-3">
-    <div className="flex h-10 w-10 items-center justify-center rounded-full bg-red-600 text-xl text-white">
-      ◎
-    </div>
-
-    <div>
-      <p className="text-xl font-bold text-slate-900">
-        EasyShooter
-      </p>
-
-    
-    </div>
-  </div>
-
-  <div className="mt-8 text-center">
- 
- 
-
-          <h1 className="text-3xl font-bold text-slate-900">
-            Einloggen
-          </h1>
-
-          <p className="mt-2 text-slate-600">
-            Melde dich an, um deine Schiessresultate zu verwalten.
-          </p>
-        </div>
-
-        <form
-          onSubmit={handleSubmit}
-          className="rounded-2xl border bg-white p-6 shadow-sm"
-        >
-          <div className="mb-5">
-            <label
-              htmlFor="email"
-              className="mb-2 block text-sm font-medium text-slate-700"
-            >
-              E-Mail
-            </label>
-
-            <input
-              id="email"
-              type="email"
-              required
-              value={email}
-              onChange={(event) => setEmail(event.target.value)}
-              className="w-full rounded-lg border border-slate-300 px-4 py-3 text-slate-900"
-            />
-          </div>
-
-          <div className="mb-6">
-            <label
-              htmlFor="password"
-              className="mb-2 block text-sm font-medium text-slate-700"
-            >
-              Passwort
-            </label>
-
-            <input
-              id="password"
-              type="password"
-              required
-              value={password}
-              onChange={(event) => setPassword(event.target.value)}
-              className="w-full rounded-lg border border-slate-300 px-4 py-3 text-slate-900"
-            />
-            <div className="mt-2 text-right">
-  <button
-    type="button"
-    onClick={handleForgotPassword}
-    disabled={loading}
-    className="text-sm font-medium text-red-600 hover:text-red-700 disabled:opacity-50"
-  >
-    Passwort vergessen?
-  </button>
-</div>
-          </div>
-
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full rounded-lg bg-red-600 px-5 py-3 font-semibold text-white disabled:opacity-50"
-          >
-            {loading ? "Anmeldung läuft..." : "Einloggen"}
-          </button>
-
-          {message && (
-            <div className="mt-5 rounded-lg bg-slate-100 p-4 text-sm text-slate-700">
-              {message}
-            </div>
-          )}
-        </form>
-      </div>
-    </main>
-  );
+  const router = useRouter(); const { language } = useI18n(); const text = copy[language];
+  const [email, setEmail] = useState(""); const [password, setPassword] = useState(""); const [message, setMessage] = useState(""); const [loading, setLoading] = useState(false);
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) { event.preventDefault(); setLoading(true); setMessage(""); const { error } = await supabase.auth.signInWithPassword({ email, password }); if (error) { setMessage(`${text.error}: ${localizeAuthError(error.message, language)}`); setLoading(false); return; } router.push("/dashboard"); }
+  async function handleForgotPassword() { setMessage(""); if (!email.trim()) { setMessage(text.emailFirst); return; } setLoading(true); const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), { redirectTo: `${window.location.origin}/update-password` }); if (error) { setMessage(`${text.resetError}: ${localizeAuthError(error.message, language)}`); setLoading(false); return; } setMessage(text.resetSent); setLoading(false); }
+  return <main data-i18n-explicit className="min-h-screen bg-slate-50 px-6 py-10"><div className="mx-auto max-w-md"><div className="flex justify-end"><LanguageSwitcher compact /></div><div className="flex items-center justify-center gap-3"><div className="flex h-10 w-10 items-center justify-center rounded-full bg-red-600 text-xl text-white">◎</div><p className="text-xl font-bold text-slate-900">EasyShooter</p></div><div className="mt-8 text-center"><h1 className="text-3xl font-bold text-slate-900">{text.title}</h1><p className="mt-2 text-slate-600">{text.intro}</p></div>
+    <form onSubmit={handleSubmit} className="mt-8 rounded-2xl border bg-white p-6 shadow-sm"><div className="mb-5"><label htmlFor="email" className="mb-2 block text-sm font-medium text-slate-700">{text.email}</label><input id="email" type="email" autoComplete="email" required value={email} onChange={(event) => setEmail(event.target.value)} className="w-full rounded-lg border border-slate-300 px-4 py-3 text-slate-900" /></div><div className="mb-6"><label htmlFor="password" className="mb-2 block text-sm font-medium text-slate-700">{text.password}</label><input id="password" type="password" autoComplete="current-password" required value={password} onChange={(event) => setPassword(event.target.value)} className="w-full rounded-lg border border-slate-300 px-4 py-3 text-slate-900" /><div className="mt-2 text-right"><button type="button" onClick={handleForgotPassword} disabled={loading} className="text-sm font-medium text-red-600 hover:text-red-700 disabled:opacity-50">{text.forgot}</button></div></div><button type="submit" disabled={loading} className="w-full rounded-lg bg-red-600 px-5 py-3 font-semibold text-white disabled:opacity-50">{loading ? text.loading : text.submit}</button>{message && <div className="mt-5 rounded-lg bg-slate-100 p-4 text-sm text-slate-700">{message}</div>}</form></div></main>;
 }
