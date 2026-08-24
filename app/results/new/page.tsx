@@ -6,9 +6,26 @@ import { useRouter } from "next/navigation";
 import { supabase } from "../../../lib/supabase";
 import Target from "@/components/Target";
 
+type EquipmentDistance = {
+  distance_m: number;
+};
+
+type EquipmentPosition = {
+  position: string;
+};
+
 type Equipment = {
   id: string;
   name: string;
+
+  iris_min: number | null;
+  iris_max: number | null;
+
+  front_sight_min: number | null;
+  front_sight_max: number | null;
+
+  equipment_distances: EquipmentDistance[];
+  equipment_positions: EquipmentPosition[];
 };
 
 type Shot = {
@@ -30,6 +47,17 @@ export default function NewResultPage() {
 
   const [equipment, setEquipment] = useState<Equipment[]>([]);
   const [equipmentId, setEquipmentId] = useState("");
+  const [selectedDistance, setSelectedDistance] =
+  useState<number | null>(null);
+
+const [selectedPosition, setSelectedPosition] =
+  useState("");
+
+const [irisSetting, setIrisSetting] =
+  useState("");
+
+const [frontSightSetting, setFrontSightSetting] =
+  useState("");
   const [discipline, setDiscipline] = useState("300m");
   const [inputType, setInputType] = useState<"individual" | "total">(
     "individual"
@@ -125,7 +153,7 @@ useEffect(() => {
   };
 }, []);
 
-  useEffect(() => {
+useEffect(() => {
   async function loadData() {
     const {
       data: { user },
@@ -135,50 +163,158 @@ useEffect(() => {
       router.replace("/login");
       return;
     }
-    // Letztes Resultat laden
-const { data: lastResult, error: lastResultError } =
-  await supabase
-    .from("results")
-    .select("discipline, equipment_id, shooting_range_id")
-    .eq("user_id", user.id)
-    .order("date", { ascending: false })
-    .limit(1)
-    .maybeSingle();
 
-if (lastResultError) {
-  console.error(
-    "Letztes Resultat konnte nicht geladen werden:",
-    lastResultError.message
-  );
-}if (lastResult?.discipline) {
-  setDiscipline(lastResult.discipline);
-}
+    // Letztes Resultat laden
+    const {
+      data: lastResult,
+      error: lastResultError,
+    } = await supabase
+      .from("results")
+      .select(`
+        discipline,
+        equipment_id,
+        shooting_range_id,
+        distance_m,
+        shooting_position,
+        iris_setting,
+        front_sight_setting
+      `)
+      .eq("user_id", user.id)
+      .order("date", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (lastResultError) {
+      console.error(
+        "Letztes Resultat konnte nicht geladen werden:",
+        lastResultError.message
+      );
+    }
+
     // Sportgeräte laden
-    const { data: equipmentData, error: equipmentError } =
-      await supabase
-        .from("equipment")
-        .select("id, name")
-        .eq("active", true)
-        .order("name");
+    const {
+      data: equipmentData,
+      error: equipmentError,
+    } = await supabase
+      .from("equipment")
+      .select(`
+        id,
+        name,
+        iris_min,
+        iris_max,
+        front_sight_min,
+        front_sight_max,
+        equipment_distances (
+          distance_m
+        ),
+        equipment_positions (
+          position
+        )
+      `)
+      .eq("active", true)
+      .order("name");
 
     if (equipmentError) {
-      setMessage(`Fehler: ${equipmentError.message}`);
+      setMessage(
+        `Fehler: ${equipmentError.message}`
+      );
       return;
     }
 
-    setEquipment(equipmentData ?? []);
+    const loadedEquipment =
+      (equipmentData ?? []) as Equipment[];
 
-   if (equipmentData && equipmentData.length > 0) {
-  const lastEquipmentStillExists = equipmentData.some(
-    (item) => item.id === lastResult?.equipment_id
-  );
+    setEquipment(loadedEquipment);
 
-  if (lastEquipmentStillExists && lastResult?.equipment_id) {
-    setEquipmentId(lastResult.equipment_id);
-  } else {
-    setEquipmentId(equipmentData[0].id);
-  }
-}
+    if (loadedEquipment.length > 0) {
+      const lastEquipment =
+        loadedEquipment.find(
+          (item) =>
+            item.id ===
+            lastResult?.equipment_id
+        );
+
+      const selectedEquipment =
+        lastEquipment ??
+        loadedEquipment[0];
+
+      setEquipmentId(
+        selectedEquipment.id
+      );
+
+      const availableDistances =
+        selectedEquipment.equipment_distances ??
+        [];
+
+      const availablePositions =
+        selectedEquipment.equipment_positions ??
+        [];
+
+      const lastDistanceIsValid =
+        lastResult?.distance_m !== null &&
+        lastResult?.distance_m !==
+          undefined &&
+        availableDistances.some(
+          (item) =>
+            Number(item.distance_m) ===
+            Number(lastResult.distance_m)
+        );
+
+      const distance =
+        lastDistanceIsValid
+          ? Number(
+              lastResult?.distance_m
+            )
+          : availableDistances.length > 0
+            ? Number(
+                availableDistances[0]
+                  .distance_m
+              )
+            : null;
+
+      setSelectedDistance(distance);
+
+      const lastPositionIsValid =
+        !!lastResult?.shooting_position &&
+        availablePositions.some(
+          (item) =>
+            item.position ===
+            lastResult.shooting_position
+        );
+
+      const position =
+        lastPositionIsValid
+          ? lastResult
+              ?.shooting_position ?? ""
+          : availablePositions[0]
+              ?.position ?? "";
+
+      setSelectedPosition(position);
+
+      setIrisSetting(
+        lastEquipment &&
+        lastResult?.iris_setting !==
+          null &&
+        lastResult?.iris_setting !==
+          undefined
+          ? String(
+              lastResult.iris_setting
+            )
+          : ""
+      );
+
+      setFrontSightSetting(
+        lastEquipment &&
+        lastResult?.front_sight_setting !==
+          null &&
+        lastResult?.front_sight_setting !==
+          undefined
+          ? String(
+              lastResult.front_sight_setting
+            )
+          : ""
+      );
+    }
 
     // Schiessstände laden
     const {
@@ -186,10 +322,10 @@ if (lastResultError) {
       error: shootingRangeError,
     } = await supabase
       .from("shooting_ranges")
-.select(
-  "id, name, city, distance_m, latitude, longitude"
-)
-.order("name"); 
+      .select(
+        "id, name, city, distance_m, latitude, longitude"
+      )
+      .order("name");
 
     if (shootingRangeError) {
       setMessage(
@@ -198,42 +334,103 @@ if (lastResultError) {
       return;
     }
 
-    setShootingRanges(shootingRangeData ?? []);
-    const { data: favoriteData, error: favoriteError } =
-  await supabase
-    .from("shooting_range_favorites")
-    .select("shooting_range_id")
-    .eq("user_id", user.id);
+    setShootingRanges(
+      shootingRangeData ?? []
+    );
 
-if (favoriteError) {
-  setMessage(
-    `Fehler beim Laden der Favoriten: ${favoriteError.message}`
-  );
-  return;
-}
+    const {
+      data: favoriteData,
+      error: favoriteError,
+    } = await supabase
+      .from(
+        "shooting_range_favorites"
+      )
+      .select("shooting_range_id")
+      .eq("user_id", user.id);
 
-setFavoriteShootingRangeIds(
-  (favoriteData ?? []).map(
-    (favorite) => favorite.shooting_range_id
-  )
-);
-if (
-  lastResult?.shooting_range_id &&
-  shootingRangeData?.some(
-    (range) =>
-      range.id === lastResult.shooting_range_id
-  )
-) {
-  setShootingRangeId(
-    lastResult.shooting_range_id
-  );
-} else {
-  setShootingRangeId("");
-}
+    if (favoriteError) {
+      setMessage(
+        `Fehler beim Laden der Favoriten: ${favoriteError.message}`
+      );
+      return;
+    }
+
+    setFavoriteShootingRangeIds(
+      (favoriteData ?? []).map(
+        (favorite) =>
+          favorite.shooting_range_id
+      )
+    );
+
+    if (
+      lastResult?.shooting_range_id &&
+      shootingRangeData?.some(
+        (range) =>
+          range.id ===
+          lastResult.shooting_range_id
+      )
+    ) {
+      setShootingRangeId(
+        lastResult.shooting_range_id
+      );
+    } else {
+      setShootingRangeId("");
+    }
   }
 
   loadData();
-  }, [router]);
+}, [router]);
+
+
+// Aktuell ausgewähltes Sportgerät
+const selectedEquipment = equipment.find(
+  (item) => item.id === equipmentId
+);
+
+// Distanzen des ausgewählten Sportgeräts
+const availableDistances =
+  selectedEquipment?.equipment_distances ?? [];
+
+// Stellungen des ausgewählten Sportgeräts
+const availablePositions =
+  selectedEquipment?.equipment_positions ?? [];
+
+  function handleEquipmentChange(newEquipmentId: string) {
+  setEquipmentId(newEquipmentId);
+
+  const newEquipment = equipment.find(
+    (item) => item.id === newEquipmentId
+  );
+
+  if (!newEquipment) {
+    setSelectedDistance(null);
+    setSelectedPosition("");
+    setIrisSetting("");
+    setFrontSightSetting("");
+    return;
+  }
+
+  const distances =
+    newEquipment.equipment_distances ?? [];
+
+  const positions =
+    newEquipment.equipment_positions ?? [];
+
+  setSelectedDistance(
+    distances.length > 0
+      ? Number(distances[0].distance_m)
+      : null
+  );
+
+  setSelectedPosition(
+    positions.length > 0
+      ? positions[0].position
+      : ""
+  );
+
+  setIrisSetting("");
+  setFrontSightSetting("");
+}
 
 const totalScore = useMemo(
   () => shots.reduce((sum, shot) => sum + shot.score, 0),
@@ -303,6 +500,21 @@ else score = 0;
   setSelectedY(Number(y.toFixed(3)));
   setSelectedScore(score);
 }
+
+function getEquipmentPositionLabel(position: string) {
+  const labels: Record<string, string> = {
+    lying: "Liegend",
+    prone: "Liegend",
+    liegend: "Liegend",
+    standing: "Stehend",
+    stehend: "Stehend",
+    kneeling: "Kniend",
+    kniend: "Kniend",
+  };
+
+  return labels[position.toLowerCase()] ?? position;
+}
+
 function getPositionLabel(
   x: number,
   y: number
@@ -494,7 +706,19 @@ try {
           equipment_id: equipmentId,
           shooting_range_id: shootingRangeId || null,
           date: new Date(shootingDate).toISOString(),
-          discipline,
+          discipline:
+            selectedDistance !== null && selectedPosition
+              ? `${selectedDistance}m ${getEquipmentPositionLabel(selectedPosition)}`
+              : selectedDistance !== null
+                ? `${selectedDistance}m`
+                : selectedPosition
+                  ? getEquipmentPositionLabel(selectedPosition)
+                  : discipline,
+          distance_m: selectedDistance,
+          shooting_position: selectedPosition || null,
+          iris_setting: irisSetting === "" ? null : Number(irisSetting),
+          front_sight_setting:
+            frontSightSetting === "" ? null : Number(frontSightSetting),
           input_type: inputType,
           shot_mode:
             inputType === "individual"
@@ -672,159 +896,259 @@ router.push("/results");
 </div>
 {showResultDetails && (
   <>
-          <div className="grid gap-5 md:grid-cols-2">
-            <div>
-              <label className="mb-2 block text-sm font-medium text-slate-700">
-                Disziplin
-              </label>
+    <div className="grid gap-5 md:grid-cols-2">
+      <div>
+        <label className="mb-2 block text-sm font-medium text-slate-700">
+          Sportgerät
+        </label>
 
-              <input
-                value={discipline}
-                onChange={(e) => setDiscipline(e.target.value)}
-                className="w-full rounded-lg border border-slate-300 bg-white px-4 py-3 text-slate-900 placeholder:text-slate-400"
-              />
-            </div>
-                        <div className="mt-5 max-w-xs">
-  <label
-    htmlFor="shootingDate"
-    className="mb-2 block text-sm font-medium text-slate-700"
-  >
-    Datum
-  </label>
+        <select
+          value={equipmentId}
+          onChange={(e) => handleEquipmentChange(e.target.value)}
+          className="w-full rounded-lg border border-slate-300 bg-white px-4 py-3 text-slate-900"
+        >
+          {equipment.length === 0 && (
+            <option value="">Kein Sportgerät vorhanden</option>
+          )}
 
-  <input
-  id="shootingDate"
-  type="datetime-local"
-  value={shootingDate}
-  onChange={(e) => setShootingDate(e.target.value)}
-  className="w-full rounded-lg border border-slate-300 bg-white px-4 py-3 text-slate-900"
-/>
-</div>
-<div>
-  <label className="mb-2 block text-sm font-medium text-slate-700">
-    Schiessstand
-  </label>
+          {equipment.map((item) => (
+            <option key={item.id} value={item.id}>
+              {item.name}
+            </option>
+          ))}
+        </select>
+      </div>
 
-  <select
-    value={shootingRangeId}
-    onChange={(e) => setShootingRangeId(e.target.value)}
-    className="w-full rounded-lg border border-slate-300 bg-white px-4 py-3 text-slate-900"
-  >
-    <option value="">Kein Schiessstand</option>
-    {shootingRangeId &&
-  !favoriteShootingRangeIds.includes(shootingRangeId) &&
-  shootingRanges
-    .filter((range) => range.id === shootingRangeId)
-    .map((range) => (
-      <option key={range.id} value={range.id}>
-        {range.name}
-        {range.city ? ` · ${range.city}` : ""}
-        {range.distance_m !== null
-          ? ` · ${range.distance_m} m`
-          : ""}
-      </option>
-    ))}
- {shootingRanges
-  .filter((range) =>
-    favoriteShootingRangeIds.includes(range.id)
-  )
-  .map((range) => (
-    <option key={range.id} value={range.id}>
-      ★ {range.name}
-      {range.city ? ` · ${range.city}` : ""}
-      {range.distance_m !== null
-        ? ` · ${range.distance_m} m`
-        : ""}
-    </option>
-  ))}
-  </select>
-  <div className="mt-3">
-  <input
-    type="search"
-    value={shootingRangeSearch}
-    onChange={(event) =>
-      setShootingRangeSearch(event.target.value)
-    }
-    placeholder="🔍 Anderen Schiessstand suchen..."
-    className="w-full rounded-lg border border-slate-300 bg-white px-4 py-3 text-slate-900"
-  />
-</div>
-{searchedShootingRanges.length > 0 && (
-  <div className="mt-2 overflow-hidden rounded-lg border border-slate-200 bg-white">
-    {searchedShootingRanges.map((range) => (
-      <button
-        key={range.id}
-        type="button"
-        onClick={() => {
-          setShootingRangeId(range.id);
-          setShootingRangeSearch("");
-        }}
-        className="block w-full border-b border-slate-100 px-4 py-3 text-left text-sm text-slate-900 last:border-b-0"
-      >
-        {range.name}
-        {range.city ? ` · ${range.city}` : ""}
-        {range.distance_m !== null
-          ? ` · ${range.distance_m} m`
-          : ""}
-      </button>
-    ))}
-  </div>
-)}
-  
-</div>
-            <div>
-              <label className="mb-2 block text-sm font-medium text-slate-700">
-                Sportgerät
-              </label>
+      <div>
+        <label
+          htmlFor="shootingDate"
+          className="mb-2 block text-sm font-medium text-slate-700"
+        >
+          Datum
+        </label>
 
-              <select
-                value={equipmentId}
-                onChange={(e) => setEquipmentId(e.target.value)}
-                className="w-full rounded-lg border border-slate-300 bg-white px-4 py-3 text-slate-900"
+        <input
+          id="shootingDate"
+          type="datetime-local"
+          value={shootingDate}
+          onChange={(e) => setShootingDate(e.target.value)}
+          className="w-full rounded-lg border border-slate-300 bg-white px-4 py-3 text-slate-900"
+        />
+      </div>
+
+      <div>
+        <label className="mb-2 block text-sm font-medium text-slate-700">
+          Distanz
+        </label>
+
+        <select
+          value={selectedDistance ?? ""}
+          onChange={(e) =>
+            setSelectedDistance(
+              e.target.value ? Number(e.target.value) : null
+            )
+          }
+          className="w-full rounded-lg border border-slate-300 bg-white px-4 py-3 text-slate-900"
+        >
+          {availableDistances.length === 0 && (
+            <option value="">Keine Distanz hinterlegt</option>
+          )}
+
+          {[...availableDistances]
+            .sort(
+              (a, b) =>
+                Number(a.distance_m) - Number(b.distance_m)
+            )
+            .map((item) => (
+              <option key={item.distance_m} value={item.distance_m}>
+                {item.distance_m} m
+              </option>
+            ))}
+        </select>
+      </div>
+
+      <div>
+        <label className="mb-2 block text-sm font-medium text-slate-700">
+          Stellung
+        </label>
+
+        <select
+          value={selectedPosition}
+          onChange={(e) => setSelectedPosition(e.target.value)}
+          className="w-full rounded-lg border border-slate-300 bg-white px-4 py-3 text-slate-900"
+        >
+          {availablePositions.length === 0 && (
+            <option value="">Keine Stellung hinterlegt</option>
+          )}
+
+          {availablePositions.map((item) => (
+            <option key={item.position} value={item.position}>
+              {getEquipmentPositionLabel(item.position)}
+            </option>
+          ))}
+        </select>
+      </div>
+
+      <div>
+        <label className="mb-2 block text-sm font-medium text-slate-700">
+          Irisblende
+        </label>
+
+        <input
+          type="number"
+          step="0.01"
+          min={selectedEquipment?.iris_min ?? undefined}
+          max={selectedEquipment?.iris_max ?? undefined}
+          value={irisSetting}
+          onChange={(e) => setIrisSetting(e.target.value)}
+          placeholder={
+            selectedEquipment?.iris_min !== null &&
+            selectedEquipment?.iris_min !== undefined &&
+            selectedEquipment?.iris_max !== null &&
+            selectedEquipment?.iris_max !== undefined
+              ? `${selectedEquipment.iris_min} – ${selectedEquipment.iris_max}`
+              : "Keine Einstellung"
+          }
+          disabled={
+            selectedEquipment?.iris_min === null &&
+            selectedEquipment?.iris_max === null
+          }
+          className="w-full rounded-lg border border-slate-300 bg-white px-4 py-3 text-slate-900 disabled:bg-slate-100 disabled:text-slate-400"
+        />
+      </div>
+
+      <div>
+        <label className="mb-2 block text-sm font-medium text-slate-700">
+          Korneinstellung
+        </label>
+
+        <input
+          type="number"
+          step="0.01"
+          min={selectedEquipment?.front_sight_min ?? undefined}
+          max={selectedEquipment?.front_sight_max ?? undefined}
+          value={frontSightSetting}
+          onChange={(e) => setFrontSightSetting(e.target.value)}
+          placeholder={
+            selectedEquipment?.front_sight_min !== null &&
+            selectedEquipment?.front_sight_min !== undefined &&
+            selectedEquipment?.front_sight_max !== null &&
+            selectedEquipment?.front_sight_max !== undefined
+              ? `${selectedEquipment.front_sight_min} – ${selectedEquipment.front_sight_max}`
+              : "Keine Einstellung"
+          }
+          disabled={
+            selectedEquipment?.front_sight_min === null &&
+            selectedEquipment?.front_sight_max === null
+          }
+          className="w-full rounded-lg border border-slate-300 bg-white px-4 py-3 text-slate-900 disabled:bg-slate-100 disabled:text-slate-400"
+        />
+      </div>
+
+      <div className="md:col-span-2">
+        <label className="mb-2 block text-sm font-medium text-slate-700">
+          Schiessstand
+        </label>
+
+        <select
+          value={shootingRangeId}
+          onChange={(e) => setShootingRangeId(e.target.value)}
+          className="w-full rounded-lg border border-slate-300 bg-white px-4 py-3 text-slate-900"
+        >
+          <option value="">Kein Schiessstand</option>
+
+          {shootingRangeId &&
+            !favoriteShootingRangeIds.includes(shootingRangeId) &&
+            shootingRanges
+              .filter((range) => range.id === shootingRangeId)
+              .map((range) => (
+                <option key={range.id} value={range.id}>
+                  {range.name}
+                  {range.city ? ` · ${range.city}` : ""}
+                  {range.distance_m !== null
+                    ? ` · ${range.distance_m} m`
+                    : ""}
+                </option>
+              ))}
+
+          {shootingRanges
+            .filter((range) =>
+              favoriteShootingRangeIds.includes(range.id)
+            )
+            .map((range) => (
+              <option key={range.id} value={range.id}>
+                ★ {range.name}
+                {range.city ? ` · ${range.city}` : ""}
+                {range.distance_m !== null
+                  ? ` · ${range.distance_m} m`
+                  : ""}
+              </option>
+            ))}
+        </select>
+
+        <div className="mt-3">
+          <input
+            type="search"
+            value={shootingRangeSearch}
+            onChange={(event) =>
+              setShootingRangeSearch(event.target.value)
+            }
+            placeholder="🔍 Anderen Schiessstand suchen..."
+            className="w-full rounded-lg border border-slate-300 bg-white px-4 py-3 text-slate-900"
+          />
+        </div>
+
+        {searchedShootingRanges.length > 0 && (
+          <div className="mt-2 overflow-hidden rounded-lg border border-slate-200 bg-white">
+            {searchedShootingRanges.map((range) => (
+              <button
+                key={range.id}
+                type="button"
+                onClick={() => {
+                  setShootingRangeId(range.id);
+                  setShootingRangeSearch("");
+                }}
+                className="block w-full border-b border-slate-100 px-4 py-3 text-left text-sm text-slate-900 last:border-b-0"
               >
-                {equipment.length === 0 && (
-                  <option value="">
-                    Kein Sportgerät vorhanden
-                  </option>
-                )}
-
-                {equipment.map((item) => (
-                  <option key={item.id} value={item.id}>
-                    {item.name}
-                  </option>
-                ))}
-              </select>
-            </div>
+                {range.name}
+                {range.city ? ` · ${range.city}` : ""}
+                {range.distance_m !== null
+                  ? ` · ${range.distance_m} m`
+                  : ""}
+              </button>
+            ))}
           </div>
+        )}
+      </div>
+    </div>
 
-          <div className="mt-6">
-            <p className="mb-3 text-sm font-medium text-slate-700">
-              Eingabeart
-            </p>
+    <div className="mt-6">
+      <p className="mb-3 text-sm font-medium text-slate-700">
+        Eingabeart
+      </p>
 
-            <div className="flex gap-6">
-              <label className="text-slate-900">
-                <input
-                  type="radio"
-                  checked={inputType === "individual"}
-                  onChange={() => setInputType("individual")}
-                />{" "}
-                Einzelschüsse
-              </label>
+      <div className="flex gap-6">
+        <label className="text-slate-900">
+          <input
+            type="radio"
+            checked={inputType === "individual"}
+            onChange={() => setInputType("individual")}
+          />{" "}
+          Einzelschüsse
+        </label>
 
-              <label className="text-slate-900">
-                <input
-                  type="radio"
-                  checked={inputType === "total"}
-                  onChange={() => setInputType("total")}
-                />{" "}
-                Nur Total
-              </label>
-            </div>
-          </div>
-
-           </>
-      )}
+        <label className="text-slate-900">
+          <input
+            type="radio"
+            checked={inputType === "total"}
+            onChange={() => setInputType("total")}
+          />{" "}
+          Nur Total
+        </label>
+      </div>
+    </div>
+  </>
+)}
 
           {inputType === "individual" ? (
             <>

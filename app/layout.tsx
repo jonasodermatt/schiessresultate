@@ -13,7 +13,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "EasyShooter Beta 1.1",
+  title: "EasyShooter Beta 1.2",
   description: "Schiessresultate erfassen, verwalten und auswerten.",
 };
 
