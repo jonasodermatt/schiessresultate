@@ -369,26 +369,30 @@ export default function StatisticsPage() {
       });
     }
 
-    return statistics.sort(
-      (a, b) => {
-        const disciplineCompare =
-          a.discipline.localeCompare(
-            b.discipline,
-            "de"
-          );
+    return statistics.sort((a, b) => {
+      const resultCountDifference = b.resultCount - a.resultCount;
 
-        if (
-          disciplineCompare !== 0
-        ) {
-          return disciplineCompare;
-        }
-
-        return a.label.localeCompare(
-          b.label,
-          "de"
-        );
+      if (resultCountDifference !== 0) {
+        return resultCountDifference;
       }
-    );
+
+      const averageDifference = b.averagePerShot - a.averagePerShot;
+
+      if (averageDifference !== 0) {
+        return averageDifference;
+      }
+
+      const disciplineCompare = a.discipline.localeCompare(
+        b.discipline,
+        "de"
+      );
+
+      if (disciplineCompare !== 0) {
+        return disciplineCompare;
+      }
+
+      return a.label.localeCompare(b.label, "de");
+    });
   }, [filteredResults]);
 
   // Gesamtdurchschnitt
