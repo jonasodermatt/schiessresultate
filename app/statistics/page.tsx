@@ -11,6 +11,8 @@ type Result = {
   id: string;
   date: string;
   discipline: string;
+  distance_m: number | null;
+  shooting_position: string | null;
   shot_mode: string;
   planned_shots: number | null;
   actual_shots: number;
@@ -26,7 +28,8 @@ type Equipment = {
 
 type StatisticGroup = {
   key: string;
-  discipline: string;
+  distance_m: number | null;
+  shooting_position: string | null;
   label: string;
   isFree: boolean;
   resultCount: number;
@@ -34,6 +37,19 @@ type StatisticGroup = {
   averagePerShot: number;
   bestAverage: number;
   bestTotal: number | null;
+};
+
+type PersonalBest = {
+  key: string;
+  equipment_id: string | null;
+  equipmentName: string;
+  distance_m: number | null;
+  shooting_position: string | null;
+  modeLabel: string;
+  average_score: number;
+  total_score: number;
+  actual_shots: number;
+  date: string;
 };
 
 type Period = "30d" | "3m" | "6m" | "12m" | "all";
@@ -47,6 +63,21 @@ type ResultShot = {
   y_position: number | null;
 };
 
+function getPositionLabel(position: string | null) {
+  if (!position) return "Nicht zugeordnet";
+
+  const labels: Record<string, string> = {
+    prone: "Liegend",
+    standing: "Stehend",
+    kneeling: "Kniend",
+    sitting: "Sitzend",
+    supported: "Aufgelegt",
+    other: "Andere",
+  };
+
+  return labels[position] ?? position;
+}
+
 export default function StatisticsPage() {
   const router = useRouter();
 
@@ -58,8 +89,8 @@ export default function StatisticsPage() {
   const [message, setMessage] = useState("");
 
   const [period, setPeriod] = useState<Period>("3m");
-  const [disciplineFilter, setDisciplineFilter] =
-    useState("all");
+  const [distanceFilter, setDistanceFilter] = useState("all");
+  const [positionFilter, setPositionFilter] = useState("all");
   const [equipmentFilter, setEquipmentFilter] =
     useState("all");
 
@@ -81,6 +112,8 @@ export default function StatisticsPage() {
           id,
           date,
           discipline,
+          distance_m,
+          shooting_position,
           shot_mode,
           planned_shots,
           actual_shots,
@@ -152,18 +185,37 @@ export default function StatisticsPage() {
     loadResults();
   }, [router]);
 
-  // Verfügbare Disziplinen
-  const disciplines = useMemo(() => {
+  // Verfügbare Distanzen aus den Resultaten
+  const distances = useMemo(() => {
     return Array.from(
       new Set(
-        results.map(
-          (result) => result.discipline
-        )
+        results
+          .map((result) => result.distance_m)
+          .filter((distance): distance is number => distance !== null)
+      )
+    ).sort((a, b) => a - b);
+  }, [results]);
+
+  // Verfügbare Stellungen aus den Resultaten
+  const positions = useMemo(() => {
+    return Array.from(
+      new Set(
+        results
+          .map((result) => result.shooting_position)
+          .filter((position): position is string => position !== null && position !== "")
       )
     ).sort((a, b) =>
-      a.localeCompare(b, "de")
+      getPositionLabel(a).localeCompare(getPositionLabel(b), "de")
     );
   }, [results]);
+
+  const hasUnassignedDistance = results.some(
+    (result) => result.distance_m === null
+  );
+
+  const hasUnassignedPosition = results.some(
+    (result) => !result.shooting_position
+  );
 
   // Nur Sportgeräte anzeigen, die in mindestens
   // einem Resultat verwendet wurden
@@ -250,11 +302,19 @@ export default function StatisticsPage() {
       );
     }
 
-    if (disciplineFilter !== "all") {
-      filtered = filtered.filter(
-        (result) =>
-          result.discipline ===
-          disciplineFilter
+    if (distanceFilter !== "all") {
+      filtered = filtered.filter((result) =>
+        distanceFilter === "unassigned"
+          ? result.distance_m === null
+          : result.distance_m === Number(distanceFilter)
+      );
+    }
+
+    if (positionFilter !== "all") {
+      filtered = filtered.filter((result) =>
+        positionFilter === "unassigned"
+          ? !result.shooting_position
+          : result.shooting_position === positionFilter
       );
     }
 
@@ -270,100 +330,62 @@ export default function StatisticsPage() {
   }, [
     results,
     period,
-    disciplineFilter,
+    distanceFilter,
+    positionFilter,
     equipmentFilter,
   ]);
 
-  // Statistikgruppen
+  // Statistikgruppen nach Distanz, Stellung und Schusszahl
   const groups = useMemo(() => {
-    const map = new Map<
-      string,
-      Result[]
-    >();
+    const map = new Map<string, Result[]>();
 
     for (const result of filteredResults) {
-      const isFree =
-        result.shot_mode === "free";
+      const isFree = result.shot_mode === "free";
+      const distanceKey = result.distance_m ?? "unassigned";
+      const positionKey = result.shooting_position ?? "unassigned";
+      const shotKey = isFree ? "free" : result.actual_shots;
+      const key = `${distanceKey}|${positionKey}|${shotKey}`;
 
-      const key = isFree
-        ? `${result.discipline}|free`
-        : `${result.discipline}|${result.actual_shots}`;
-
-      const existing =
-        map.get(key) ?? [];
-
+      const existing = map.get(key) ?? [];
       existing.push(result);
       map.set(key, existing);
     }
 
-    const statistics: StatisticGroup[] =
-      [];
+    const statistics: StatisticGroup[] = [];
 
-    for (const [
-      key,
-      groupResults,
-    ] of map.entries()) {
+    for (const [key, groupResults] of map.entries()) {
       const first = groupResults[0];
+      const isFree = first.shot_mode === "free";
 
-      const isFree =
-        first.shot_mode === "free";
+      const totalShots = groupResults.reduce(
+        (sum, result) => sum + Number(result.actual_shots),
+        0
+      );
 
-      const totalShots =
-        groupResults.reduce(
-          (sum, result) =>
-            sum +
-            Number(
-              result.actual_shots
-            ),
-          0
-        );
-
-      const totalPoints =
-        groupResults.reduce(
-          (sum, result) =>
-            sum +
-            Number(
-              result.total_score
-            ),
-          0
-        );
+      const totalPoints = groupResults.reduce(
+        (sum, result) => sum + Number(result.total_score),
+        0
+      );
 
       const bestAverage = Math.max(
-        ...groupResults.map(
-          (result) =>
-            Number(
-              result.average_score
-            )
-        )
+        ...groupResults.map((result) => Number(result.average_score))
       );
 
       const bestTotal = isFree
         ? null
         : Math.max(
-            ...groupResults.map(
-              (result) =>
-                Number(
-                  result.total_score
-                )
-            )
+            ...groupResults.map((result) => Number(result.total_score))
           );
 
       statistics.push({
         key,
-        discipline:
-          first.discipline,
-        label: isFree
-          ? "Freies Training"
-          : `${first.actual_shots} Schüsse`,
+        distance_m: first.distance_m,
+        shooting_position: first.shooting_position,
+        label: isFree ? "Freies Training" : `${first.actual_shots} Schüsse`,
         isFree,
-        resultCount:
-          groupResults.length,
+        resultCount: groupResults.length,
         totalShots,
-        averagePerShot:
-          totalShots > 0
-            ? totalPoints /
-              totalShots
-            : 0,
+        averagePerShot: totalShots > 0 ? totalPoints / totalShots : 0,
         bestAverage,
         bestTotal,
       });
@@ -371,25 +393,17 @@ export default function StatisticsPage() {
 
     return statistics.sort((a, b) => {
       const resultCountDifference = b.resultCount - a.resultCount;
+      if (resultCountDifference !== 0) return resultCountDifference;
 
-      if (resultCountDifference !== 0) {
-        return resultCountDifference;
-      }
+      const distanceA = a.distance_m ?? Number.MAX_SAFE_INTEGER;
+      const distanceB = b.distance_m ?? Number.MAX_SAFE_INTEGER;
+      if (distanceA !== distanceB) return distanceA - distanceB;
 
-      const averageDifference = b.averagePerShot - a.averagePerShot;
-
-      if (averageDifference !== 0) {
-        return averageDifference;
-      }
-
-      const disciplineCompare = a.discipline.localeCompare(
-        b.discipline,
+      const positionCompare = getPositionLabel(a.shooting_position).localeCompare(
+        getPositionLabel(b.shooting_position),
         "de"
       );
-
-      if (disciplineCompare !== 0) {
-        return disciplineCompare;
-      }
+      if (positionCompare !== 0) return positionCompare;
 
       return a.label.localeCompare(b.label, "de");
     });
@@ -453,15 +467,20 @@ export default function StatisticsPage() {
         );
       });
 
-    if (
-      disciplineFilter !== "all"
-    ) {
-      previousResults =
-        previousResults.filter(
-          (result) =>
-            result.discipline ===
-            disciplineFilter
-        );
+    if (distanceFilter !== "all") {
+      previousResults = previousResults.filter((result) =>
+        distanceFilter === "unassigned"
+          ? result.distance_m === null
+          : result.distance_m === Number(distanceFilter)
+      );
+    }
+
+    if (positionFilter !== "all") {
+      previousResults = previousResults.filter((result) =>
+        positionFilter === "unassigned"
+          ? !result.shooting_position
+          : result.shooting_position === positionFilter
+      );
     }
 
     if (
@@ -501,7 +520,8 @@ export default function StatisticsPage() {
   }, [
     results,
     period,
-    disciplineFilter,
+    distanceFilter,
+    positionFilter,
     equipmentFilter,
   ]);
 
@@ -512,55 +532,120 @@ export default function StatisticsPage() {
         previousAverage
       : null;
 
-  // Persönliche Bestleistung
-  const bestResult = useMemo(() => {
-    if (
-      filteredResults.length === 0
-    ) {
-      return null;
+  // Persönliche Bestleistungen pro Sportgerät, Distanz,
+  // Stellung und Schussmodus/Schusszahl
+  const personalBests = useMemo(() => {
+    const equipmentNames = new Map(
+      equipment.map((item) => [item.id, item.name])
+    );
+
+    const map = new Map<string, Result[]>();
+
+    for (const result of filteredResults) {
+      const equipmentKey =
+        result.equipment_id ?? "unassigned";
+      const distanceKey =
+        result.distance_m ?? "unassigned";
+      const positionKey =
+        result.shooting_position ?? "unassigned";
+      const modeKey =
+        result.shot_mode === "free"
+          ? "free"
+          : `fixed-${result.actual_shots}`;
+
+      const key = `${equipmentKey}|${distanceKey}|${positionKey}|${modeKey}`;
+
+      const existing = map.get(key) ?? [];
+      existing.push(result);
+      map.set(key, existing);
     }
 
-    return [...filteredResults].sort(
-      (a, b) => {
-        const averageDifference =
-          Number(
-            b.average_score
-          ) -
-          Number(
-            a.average_score
-          );
+    const bests: PersonalBest[] = [];
 
-        if (
-          averageDifference !== 0
-        ) {
+    for (const [key, groupResults] of map.entries()) {
+      const best = [...groupResults].sort((a, b) => {
+        const averageDifference =
+          Number(b.average_score) -
+          Number(a.average_score);
+
+        if (averageDifference !== 0) {
           return averageDifference;
         }
 
         const shotDifference =
-          Number(
-            b.actual_shots
-          ) -
-          Number(
-            a.actual_shots
-          );
+          Number(b.actual_shots) -
+          Number(a.actual_shots);
 
-        if (
-          shotDifference !== 0
-        ) {
+        if (shotDifference !== 0) {
           return shotDifference;
         }
 
         return (
-          new Date(
-            b.date
-          ).getTime() -
-          new Date(
-            a.date
-          ).getTime()
+          new Date(b.date).getTime() -
+          new Date(a.date).getTime()
         );
+      })[0];
+
+      bests.push({
+        key,
+        equipment_id: best.equipment_id,
+        equipmentName: best.equipment_id
+          ? equipmentNames.get(best.equipment_id) ??
+            "Unbekanntes Sportgerät"
+          : "Sportgerät nicht zugeordnet",
+        distance_m: best.distance_m,
+        shooting_position: best.shooting_position,
+        modeLabel:
+          best.shot_mode === "free"
+            ? "Freies Training"
+            : `${best.actual_shots} Schüsse`,
+        average_score: Number(best.average_score),
+        total_score: Number(best.total_score),
+        actual_shots: Number(best.actual_shots),
+        date: best.date,
+      });
+    }
+
+    return bests.sort((a, b) => {
+      const distanceA =
+        a.distance_m ?? Number.MAX_SAFE_INTEGER;
+      const distanceB =
+        b.distance_m ?? Number.MAX_SAFE_INTEGER;
+
+      if (distanceA !== distanceB) {
+        return distanceA - distanceB;
       }
-    )[0];
-  }, [filteredResults]);
+
+      const positionCompare =
+        getPositionLabel(
+          a.shooting_position
+        ).localeCompare(
+          getPositionLabel(
+            b.shooting_position
+          ),
+          "de"
+        );
+
+      if (positionCompare !== 0) {
+        return positionCompare;
+      }
+
+      const equipmentCompare =
+        a.equipmentName.localeCompare(
+          b.equipmentName,
+          "de"
+        );
+
+      if (equipmentCompare !== 0) {
+        return equipmentCompare;
+      }
+
+      return a.modeLabel.localeCompare(
+        b.modeLabel,
+        "de"
+      );
+    });
+  }, [filteredResults, equipment]);
 
   // Anzahl Schüsse
   const totalShots = useMemo(() => {
@@ -649,9 +734,8 @@ export default function StatisticsPage() {
           </h1>
 
           <p className="mt-2 text-slate-600">
-            Vergleiche deine
-            Leistungen nach Disziplin
-            und Schusszahl.
+            Vergleiche deine Leistungen nach Distanz, Stellung,
+            Sportgerät und Schusszahl.
           </p>
         </div>
 
@@ -705,42 +789,51 @@ export default function StatisticsPage() {
           </div>
         </div>
 
-        {/* Disziplin */}
-        <div className="mt-4 max-w-sm">
-          <label className="mb-2 block text-sm font-medium text-slate-700">
-            Disziplin
-          </label>
+        {/* Distanz und Stellung */}
+        <div className="mt-4 grid max-w-2xl gap-4 sm:grid-cols-2">
+          <div>
+            <label className="mb-2 block text-sm font-medium text-slate-700">
+              Distanz
+            </label>
 
-          <select
-            value={
-              disciplineFilter
-            }
-            onChange={(event) =>
-              setDisciplineFilter(
-                event.target.value
-              )
-            }
-            className="w-full rounded-lg border border-slate-300 bg-white px-4 py-3 text-slate-900"
-          >
-            <option value="all">
-              Alle Disziplinen
-            </option>
-
-            {disciplines.map(
-              (discipline) => (
-                <option
-                  key={
-                    discipline
-                  }
-                  value={
-                    discipline
-                  }
-                >
-                  {discipline}
+            <select
+              value={distanceFilter}
+              onChange={(event) => setDistanceFilter(event.target.value)}
+              className="w-full rounded-lg border border-slate-300 bg-white px-4 py-3 text-slate-900"
+            >
+              <option value="all">Alle Distanzen</option>
+              {distances.map((distance) => (
+                <option key={distance} value={String(distance)}>
+                  {distance} m
                 </option>
-              )
-            )}
-          </select>
+              ))}
+              {hasUnassignedDistance && (
+                <option value="unassigned">Nicht zugeordnet</option>
+              )}
+            </select>
+          </div>
+
+          <div>
+            <label className="mb-2 block text-sm font-medium text-slate-700">
+              Stellung
+            </label>
+
+            <select
+              value={positionFilter}
+              onChange={(event) => setPositionFilter(event.target.value)}
+              className="w-full rounded-lg border border-slate-300 bg-white px-4 py-3 text-slate-900"
+            >
+              <option value="all">Alle Stellungen</option>
+              {positions.map((position) => (
+                <option key={position} value={position}>
+                  {getPositionLabel(position)}
+                </option>
+              ))}
+              {hasUnassignedPosition && (
+                <option value="unassigned">Nicht zugeordnet</option>
+              )}
+            </select>
+          </div>
         </div>
 
         {/* Sportgerät */}
@@ -928,84 +1021,91 @@ export default function StatisticsPage() {
               </div>
             </section>
 
-            {/* Bestleistung */}
-            {bestResult && (
-              <section className="mt-6">
-                <div className="rounded-2xl border bg-white p-6 shadow-sm">
-                  <div className="flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
-                    <div>
-                      <p className="text-sm font-medium text-slate-500">
-                        🏆 Persönliche
-                        Bestleistung
-                      </p>
+            {/* Persönliche Bestleistungen */}
+            {personalBests.length > 0 && (
+              <section className="mt-10">
+                <div>
+                  <h2 className="text-xl font-bold text-slate-900">
+                    🏆 Persönliche Bestleistungen
+                  </h2>
 
-                      <h3 className="mt-2 text-xl font-bold text-slate-900">
-                        {
-                          bestResult.discipline
-                        }
-                      </h3>
+                  <p className="mt-1 text-sm text-slate-500">
+                    Beste Resultate pro Sportgerät, Distanz,
+                    Stellung und Schusszahl für die gewählten Filter.
+                  </p>
+                </div>
 
-                      <p className="mt-1 text-sm text-slate-600">
-                        {formatDate(
-                          bestResult.date
-                        )}
-                      </p>
-                    </div>
+                <div className="mt-5 grid gap-5 md:grid-cols-2">
+                  {personalBests.map((best) => (
+                    <article
+                      key={best.key}
+                      className="rounded-2xl border bg-white p-6 shadow-sm"
+                    >
+                      <div className="flex items-start justify-between gap-4">
+                        <div>
+                          <h3 className="text-xl font-bold text-slate-900">
+                            {best.distance_m !== null
+                              ? `${best.distance_m} m`
+                              : "Distanz nicht zugeordnet"}
+                            {" · "}
+                            {getPositionLabel(
+                              best.shooting_position
+                            )}
+                          </h3>
 
-                    <div className="grid grid-cols-2 gap-x-8 gap-y-3 sm:text-right">
-                      <div>
-                        <p className="text-xs text-slate-500">
-                          Durchschnitt
-                        </p>
+                          <p className="mt-1 text-sm font-medium text-slate-700">
+                            {best.equipmentName}
+                          </p>
+                        </div>
 
-                        <p className="mt-1 text-2xl font-bold text-red-600">
-                          {Number(
-                            bestResult.average_score
-                          ).toFixed(
-                            2
-                          )}
-                        </p>
+                        <span className="shrink-0 rounded-full bg-red-50 px-3 py-1 text-xs font-semibold text-red-700">
+                          {best.modeLabel}
+                        </span>
                       </div>
 
-                      <div>
-                        <p className="text-xs text-slate-500">
-                          Schüsse
-                        </p>
+                      <div className="mt-6 grid grid-cols-2 gap-x-6 gap-y-4">
+                        <div>
+                          <p className="text-xs text-slate-500">
+                            Bester Ø
+                          </p>
 
-                        <p className="mt-1 text-2xl font-bold text-slate-900">
-                          {
-                            bestResult.actual_shots
-                          }
-                        </p>
+                          <p className="mt-1 text-2xl font-bold text-red-600">
+                            {best.average_score.toFixed(2)}
+                          </p>
+                        </div>
+
+                        <div>
+                          <p className="text-xs text-slate-500">
+                            Total
+                          </p>
+
+                          <p className="mt-1 text-2xl font-bold text-slate-900">
+                            {best.total_score.toFixed(0)}
+                          </p>
+                        </div>
+
+                        <div>
+                          <p className="text-xs text-slate-500">
+                            Schüsse
+                          </p>
+
+                          <p className="mt-1 font-semibold text-slate-900">
+                            {best.actual_shots}
+                          </p>
+                        </div>
+
+                        <div>
+                          <p className="text-xs text-slate-500">
+                            Datum
+                          </p>
+
+                          <p className="mt-1 font-semibold text-slate-900">
+                            {formatDate(best.date)}
+                          </p>
+                        </div>
                       </div>
-
-                      <div>
-                        <p className="text-xs text-slate-500">
-                          Total
-                        </p>
-
-                        <p className="mt-1 text-lg font-bold text-slate-900">
-                          {Number(
-                            bestResult.total_score
-                          ).toFixed(
-                            0
-                          )}
-                        </p>
-                      </div>
-
-                      <div>
-                        <p className="text-xs text-slate-500">
-                          Datum
-                        </p>
-
-                        <p className="mt-1 font-semibold text-slate-900">
-                          {formatDate(
-                            bestResult.date
-                          )}
-                        </p>
-                      </div>
-                    </div>
-                  </div>
+                    </article>
+                  ))}
                 </div>
               </section>
             )}
@@ -1013,8 +1113,7 @@ export default function StatisticsPage() {
             {/* Gruppen */}
             <section className="mt-10">
               <h2 className="text-xl font-bold text-slate-900">
-                Nach Disziplin und
-                Schusszahl
+                Nach Distanz, Stellung und Schusszahl
               </h2>
 
               <div className="mt-5 grid gap-5 md:grid-cols-2">
@@ -1029,9 +1128,11 @@ export default function StatisticsPage() {
                       <div className="flex items-start justify-between gap-4">
                         <div>
                           <h3 className="text-xl font-bold text-slate-900">
-                            {
-                              group.discipline
-                            }
+                            {group.distance_m !== null
+                              ? `${group.distance_m} m`
+                              : "Distanz nicht zugeordnet"}
+                            {" · "}
+                            {getPositionLabel(group.shooting_position)}
                           </h3>
 
                           <p className="mt-1 font-medium text-red-600">

@@ -16,9 +16,7 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "EasyShooter",
   description: "Schiessresultate erfassen, verwalten und auswerten.",
-    icons: {
-    icon: "/icon.png",
-  },
+  
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
