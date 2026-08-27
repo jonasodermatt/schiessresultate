@@ -139,7 +139,16 @@ export default function DashboardPage() {
         </section>
 
         <section className="mb-8">
+        <div className="flex flex-wrap gap-5">
           <Link href="/results/new" className="inline-flex rounded-xl bg-red-600 px-6 py-3 font-semibold text-white hover:bg-red-700">+ Neues Resultat</Link>
+          
+  <Link
+    href="/training/new"
+    className="inline-flex rounded-xl bg-red-600 px-6 py-3 font-semibold text-white hover:bg-red-700"
+  >
+    Trainingseinheit starten
+  </Link>
+  </div>
         </section>
 
         <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">

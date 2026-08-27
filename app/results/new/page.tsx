@@ -45,6 +45,16 @@ type ShootingRange = {
 export default function NewResultPage() {
   const router = useRouter();
 
+  const [trainingSessionId, setTrainingSessionId] =
+    useState<string | null>(null);
+  const [trainingProgramId, setTrainingProgramId] =
+    useState<string | null>(null);
+  const [trainingParamsReady, setTrainingParamsReady] =
+    useState(false);
+
+  const isTrainingMode =
+    !!trainingSessionId && !!trainingProgramId;
+
   const [equipment, setEquipment] = useState<Equipment[]>([]);
   const [equipmentId, setEquipmentId] = useState("");
   const [selectedDistance, setSelectedDistance] =
@@ -74,6 +84,7 @@ const [frontSightSetting, setFrontSightSetting] =
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState("");
   const [showManualInput, setShowManualInput] = useState(false);
+  const [trainingProgramLoaded, setTrainingProgramLoaded] = useState(false);
 
   const [shootingDate, setShootingDate] = useState(() => {
   const now = new Date();
@@ -112,6 +123,18 @@ const showResultActions =
 
  
   }
+
+useEffect(() => {
+  const params = new URLSearchParams(window.location.search);
+
+  setTrainingSessionId(
+    params.get("trainingSessionId")
+  );
+  setTrainingProgramId(
+    params.get("trainingProgramId")
+  );
+  setTrainingParamsReady(true);
+}, []);
 
 useEffect(() => {
   let wakeLock: WakeLockSentinel | null = null;
@@ -154,6 +177,10 @@ useEffect(() => {
 }, []);
 
 useEffect(() => {
+  if (!trainingParamsReady) {
+    return;
+  }
+
   async function loadData() {
     const {
       data: { user },
@@ -162,33 +189,6 @@ useEffect(() => {
     if (!user) {
       router.replace("/login");
       return;
-    }
-
-    // Letztes Resultat laden
-    const {
-      data: lastResult,
-      error: lastResultError,
-    } = await supabase
-      .from("results")
-      .select(`
-        discipline,
-        equipment_id,
-        shooting_range_id,
-        distance_m,
-        shooting_position,
-        iris_setting,
-        front_sight_setting
-      `)
-      .eq("user_id", user.id)
-      .order("date", { ascending: false })
-      .limit(1)
-      .maybeSingle();
-
-    if (lastResultError) {
-      console.error(
-        "Letztes Resultat konnte nicht geladen werden:",
-        lastResultError.message
-      );
     }
 
     // Sportgeräte laden
@@ -215,9 +215,7 @@ useEffect(() => {
       .order("name");
 
     if (equipmentError) {
-      setMessage(
-        `Fehler: ${equipmentError.message}`
-      );
+      setMessage(`Fehler: ${equipmentError.message}`);
       return;
     }
 
@@ -225,96 +223,6 @@ useEffect(() => {
       (equipmentData ?? []) as Equipment[];
 
     setEquipment(loadedEquipment);
-
-    if (loadedEquipment.length > 0) {
-      const lastEquipment =
-        loadedEquipment.find(
-          (item) =>
-            item.id ===
-            lastResult?.equipment_id
-        );
-
-      const selectedEquipment =
-        lastEquipment ??
-        loadedEquipment[0];
-
-      setEquipmentId(
-        selectedEquipment.id
-      );
-
-      const availableDistances =
-        selectedEquipment.equipment_distances ??
-        [];
-
-      const availablePositions =
-        selectedEquipment.equipment_positions ??
-        [];
-
-      const lastDistanceIsValid =
-        lastResult?.distance_m !== null &&
-        lastResult?.distance_m !==
-          undefined &&
-        availableDistances.some(
-          (item) =>
-            Number(item.distance_m) ===
-            Number(lastResult.distance_m)
-        );
-
-      const distance =
-        lastDistanceIsValid
-          ? Number(
-              lastResult?.distance_m
-            )
-          : availableDistances.length > 0
-            ? Number(
-                availableDistances[0]
-                  .distance_m
-              )
-            : null;
-
-      setSelectedDistance(distance);
-
-      const lastPositionIsValid =
-        !!lastResult?.shooting_position &&
-        availablePositions.some(
-          (item) =>
-            item.position ===
-            lastResult.shooting_position
-        );
-
-      const position =
-        lastPositionIsValid
-          ? lastResult
-              ?.shooting_position ?? ""
-          : availablePositions[0]
-              ?.position ?? "";
-
-      setSelectedPosition(position);
-
-      setIrisSetting(
-        lastEquipment &&
-        lastResult?.iris_setting !==
-          null &&
-        lastResult?.iris_setting !==
-          undefined
-          ? String(
-              lastResult.iris_setting
-            )
-          : ""
-      );
-
-      setFrontSightSetting(
-        lastEquipment &&
-        lastResult?.front_sight_setting !==
-          null &&
-        lastResult?.front_sight_setting !==
-          undefined
-          ? String(
-              lastResult.front_sight_setting
-            )
-          : ""
-      );
-    }
 
     // Schiessstände laden
     const {
@@ -334,17 +242,13 @@ useEffect(() => {
       return;
     }
 
-    setShootingRanges(
-      shootingRangeData ?? []
-    );
+    setShootingRanges(shootingRangeData ?? []);
 
     const {
       data: favoriteData,
       error: favoriteError,
     } = await supabase
-      .from(
-        "shooting_range_favorites"
-      )
+      .from("shooting_range_favorites")
       .select("shooting_range_id")
       .eq("user_id", user.id);
 
@@ -357,17 +261,256 @@ useEffect(() => {
 
     setFavoriteShootingRangeIds(
       (favoriteData ?? []).map(
-        (favorite) =>
-          favorite.shooting_range_id
+        (favorite) => favorite.shooting_range_id
       )
     );
+
+    // ---------------------------------------------------------
+    // TRAININGSMODUS
+    // ---------------------------------------------------------
+    if (trainingSessionId && trainingProgramId) {
+      const {
+        data: sessionData,
+        error: sessionError,
+      } = await supabase
+        .from("training_sessions")
+        .select(`
+          id,
+          user_id,
+          equipment_id,
+          shooting_range_id,
+          distance_m,
+          shooting_position,
+          iris_setting,
+          front_sight_setting,
+          status
+        `)
+        .eq("id", trainingSessionId)
+        .eq("user_id", user.id)
+        .single();
+
+      if (sessionError || !sessionData) {
+        setMessage(
+          `Trainingseinheit konnte nicht geladen werden: ${
+            sessionError?.message ?? "Nicht gefunden"
+          }`
+        );
+        return;
+      }
+
+      if (sessionData.status !== "active") {
+        setMessage("Diese Trainingseinheit ist nicht mehr aktiv.");
+        return;
+      }
+
+      const {
+        data: programData,
+        error: programError,
+      } = await supabase
+        .from("training_session_programs")
+        .select(`
+          id,
+          training_session_id,
+          shot_mode,
+          planned_shots,
+          status
+        `)
+        .eq("id", trainingProgramId)
+        .eq("training_session_id", trainingSessionId)
+        .single();
+
+      if (programError || !programData) {
+        setMessage(
+          `Trainingsprogramm konnte nicht geladen werden: ${
+            programError?.message ?? "Nicht gefunden"
+          }`
+        );
+        return;
+      }
+
+      if (programData.status === "completed") {
+        router.replace(`/training/${trainingSessionId}`);
+        return;
+      }
+
+      const sessionEquipment = loadedEquipment.find(
+        (item) => item.id === sessionData.equipment_id
+      );
+
+      if (!sessionEquipment) {
+        setMessage(
+          "Das Sportgerät dieser Trainingseinheit ist nicht mehr verfügbar."
+        );
+        return;
+      }
+
+      setEquipmentId(sessionData.equipment_id);
+      setSelectedDistance(
+        sessionData.distance_m !== null
+          ? Number(sessionData.distance_m)
+          : null
+      );
+      setSelectedPosition(
+        sessionData.shooting_position ?? ""
+      );
+      setIrisSetting(
+        sessionData.iris_setting !== null
+          ? String(sessionData.iris_setting)
+          : ""
+      );
+      setFrontSightSetting(
+        sessionData.front_sight_setting !== null
+          ? String(sessionData.front_sight_setting)
+          : ""
+      );
+      setShootingRangeId(
+        sessionData.shooting_range_id ?? ""
+      );
+
+      setInputType("individual");
+      setShotMode(
+        programData.shot_mode === "free"
+          ? "free"
+          : "fixed"
+      );
+
+      if (
+        programData.shot_mode === "fixed" &&
+        programData.planned_shots !== null
+      ) {
+        setPlannedShots(
+          Number(programData.planned_shots)
+        );
+      }
+
+      // Der Zeitpunkt des Resultats entspricht dem Start
+      // des ausgewählten Programms.
+      const now = new Date();
+      const offset = now.getTimezoneOffset();
+      const localDate = new Date(
+        now.getTime() - offset * 60 * 1000
+      );
+
+      setShootingDate(
+        localDate.toISOString().slice(0, 16)
+      );
+
+      if (programData.status === "open") {
+        await supabase
+          .from("training_session_programs")
+          .update({
+            status: "in_progress",
+            started_at: new Date().toISOString(),
+          })
+          .eq("id", trainingProgramId);
+      }
+
+      setTrainingProgramLoaded(true);
+      return;
+    }
+
+    // ---------------------------------------------------------
+    // NORMALE RESULTATERFASSUNG
+    // ---------------------------------------------------------
+    const {
+      data: lastResult,
+      error: lastResultError,
+    } = await supabase
+      .from("results")
+      .select(`
+        discipline,
+        equipment_id,
+        shooting_range_id,
+        distance_m,
+        shooting_position,
+        iris_setting,
+        front_sight_setting
+      `)
+      .eq("user_id", user.id)
+      .order("date", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (lastResultError) {
+      console.error(
+        "Letztes Resultat konnte nicht geladen werden:",
+        lastResultError.message
+      );
+    }
+
+    if (loadedEquipment.length > 0) {
+      const lastEquipment =
+        loadedEquipment.find(
+          (item) =>
+            item.id === lastResult?.equipment_id
+        );
+
+      const selectedEquipment =
+        lastEquipment ?? loadedEquipment[0];
+
+      setEquipmentId(selectedEquipment.id);
+
+      const availableDistances =
+        selectedEquipment.equipment_distances ?? [];
+
+      const availablePositions =
+        selectedEquipment.equipment_positions ?? [];
+
+      const lastDistanceIsValid =
+        lastResult?.distance_m !== null &&
+        lastResult?.distance_m !== undefined &&
+        availableDistances.some(
+          (item) =>
+            Number(item.distance_m) ===
+            Number(lastResult.distance_m)
+        );
+
+      setSelectedDistance(
+        lastDistanceIsValid
+          ? Number(lastResult?.distance_m)
+          : availableDistances.length > 0
+            ? Number(
+                availableDistances[0].distance_m
+              )
+            : null
+      );
+
+      const lastPositionIsValid =
+        !!lastResult?.shooting_position &&
+        availablePositions.some(
+          (item) =>
+            item.position ===
+            lastResult.shooting_position
+        );
+
+      setSelectedPosition(
+        lastPositionIsValid
+          ? lastResult?.shooting_position ?? ""
+          : availablePositions[0]?.position ?? ""
+      );
+
+      setIrisSetting(
+        lastEquipment &&
+        lastResult?.iris_setting !== null &&
+        lastResult?.iris_setting !== undefined
+          ? String(lastResult.iris_setting)
+          : ""
+      );
+
+      setFrontSightSetting(
+        lastEquipment &&
+        lastResult?.front_sight_setting !== null &&
+        lastResult?.front_sight_setting !== undefined
+          ? String(lastResult.front_sight_setting)
+          : ""
+      );
+    }
 
     if (
       lastResult?.shooting_range_id &&
       shootingRangeData?.some(
         (range) =>
-          range.id ===
-          lastResult.shooting_range_id
+          range.id === lastResult.shooting_range_id
       )
     ) {
       setShootingRangeId(
@@ -379,7 +522,12 @@ useEffect(() => {
   }
 
   loadData();
-}, [router]);
+}, [
+  router,
+  trainingSessionId,
+  trainingProgramId,
+  trainingParamsReady,
+]);
 
 
 // Aktuell ausgewähltes Sportgerät
@@ -719,6 +867,10 @@ try {
           iris_setting: irisSetting === "" ? null : Number(irisSetting),
           front_sight_setting:
             frontSightSetting === "" ? null : Number(frontSightSetting),
+          training_session_id:
+            trainingSessionId || null,
+          training_session_program_id:
+            trainingProgramId || null,
           input_type: inputType,
           shot_mode:
             inputType === "individual"
@@ -776,6 +928,38 @@ weather_code: weather?.weatherCode ?? null,
         setSaving(false);
         return;
       }
+    }
+
+    if (
+      trainingSessionId &&
+      trainingProgramId
+    ) {
+      const {
+        error: completeProgramError,
+      } = await supabase
+        .from("training_session_programs")
+        .update({
+          status: "completed",
+          completed_at: new Date().toISOString(),
+        })
+        .eq("id", trainingProgramId)
+        .eq(
+          "training_session_id",
+          trainingSessionId
+        );
+
+      if (completeProgramError) {
+        setMessage(
+          `Resultat gespeichert, aber das Trainingsprogramm konnte nicht abgeschlossen werden: ${completeProgramError.message}`
+        );
+        setSaving(false);
+        return;
+      }
+
+      router.push(
+        `/training/${trainingSessionId}`
+      );
+      return;
     }
 
     if (saveAndNext) {
@@ -853,8 +1037,22 @@ router.push("/results");
 
       <div className="mx-auto max-w-4xl px-5 py-8">
         <h1 className="text-3xl font-bold text-slate-900">
-          Neues Resultat
+          {isTrainingMode
+            ? "Trainingsprogramm erfassen"
+            : "Neues Resultat"}
         </h1>
+
+        {isTrainingMode && (
+          <div className="mt-4 rounded-xl bg-red-50 p-4 text-sm text-slate-700">
+            <p className="font-semibold text-red-700">
+              Trainingseinheit aktiv
+            </p>
+            <p className="mt-1">
+              Die gemeinsamen Trainingsangaben und das Programm
+              wurden aus der Trainingseinheit übernommen.
+            </p>
+          </div>
+        )}
 
         <div className="mt-8 rounded-2xl border bg-white p-6 shadow-sm">
         <div className="mb-6 flex items-center justify-between">
@@ -884,15 +1082,17 @@ router.push("/results");
     )}
   </div>
 
-  <button
-    type="button"
-    onClick={() =>
-      setShowResultDetails((current) => !current)
-    }
-    className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700"
-  >
-    {showResultDetails ? "▲ Einklappen" : "▼ Anzeigen"}
-  </button>
+  {!isTrainingMode && (
+    <button
+      type="button"
+      onClick={() =>
+        setShowResultDetails((current) => !current)
+      }
+      className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700"
+    >
+      {showResultDetails ? "▲ Einklappen" : "▼ Anzeigen"}
+    </button>
+  )}
 </div>
 {showResultDetails && (
   <>
@@ -943,6 +1143,7 @@ router.push("/results");
 
         <select
           value={selectedDistance ?? ""}
+          disabled={isTrainingMode}
           onChange={(e) =>
             setSelectedDistance(
               e.target.value ? Number(e.target.value) : null
@@ -974,6 +1175,7 @@ router.push("/results");
 
         <select
           value={selectedPosition}
+          disabled={isTrainingMode}
           onChange={(e) => setSelectedPosition(e.target.value)}
           className="w-full rounded-lg border border-slate-300 bg-white px-4 py-3 text-slate-900"
         >
@@ -998,6 +1200,7 @@ router.push("/results");
           type="number"
           step="0.01"
           min={selectedEquipment?.iris_min ?? undefined}
+          readOnly={isTrainingMode}
           max={selectedEquipment?.iris_max ?? undefined}
           value={irisSetting}
           onChange={(e) => setIrisSetting(e.target.value)}
@@ -1026,6 +1229,7 @@ router.push("/results");
           type="number"
           step="0.01"
           min={selectedEquipment?.front_sight_min ?? undefined}
+          readOnly={isTrainingMode}
           max={selectedEquipment?.front_sight_max ?? undefined}
           value={frontSightSetting}
           onChange={(e) => setFrontSightSetting(e.target.value)}
@@ -1052,6 +1256,7 @@ router.push("/results");
 
         <select
           value={shootingRangeId}
+          disabled={isTrainingMode}
           onChange={(e) => setShootingRangeId(e.target.value)}
           className="w-full rounded-lg border border-slate-300 bg-white px-4 py-3 text-slate-900"
         >
@@ -1086,42 +1291,47 @@ router.push("/results");
             ))}
         </select>
 
-        <div className="mt-3">
-          <input
-            type="search"
-            value={shootingRangeSearch}
-            onChange={(event) =>
-              setShootingRangeSearch(event.target.value)
-            }
-            placeholder="🔍 Anderen Schiessstand suchen..."
-            className="w-full rounded-lg border border-slate-300 bg-white px-4 py-3 text-slate-900"
-          />
-        </div>
+        {!isTrainingMode && (
+          <div>
+            <div className="mt-3">
+              <input
+                type="search"
+                value={shootingRangeSearch}
+                onChange={(event) =>
+                  setShootingRangeSearch(event.target.value)
+                }
+                placeholder="🔍 Anderen Schiessstand suchen..."
+                className="w-full rounded-lg border border-slate-300 bg-white px-4 py-3 text-slate-900"
+              />
+            </div>
 
-        {searchedShootingRanges.length > 0 && (
-          <div className="mt-2 overflow-hidden rounded-lg border border-slate-200 bg-white">
-            {searchedShootingRanges.map((range) => (
-              <button
-                key={range.id}
-                type="button"
-                onClick={() => {
-                  setShootingRangeId(range.id);
-                  setShootingRangeSearch("");
-                }}
-                className="block w-full border-b border-slate-100 px-4 py-3 text-left text-sm text-slate-900 last:border-b-0"
-              >
-                {range.name}
-                {range.city ? ` · ${range.city}` : ""}
-                {range.distance_m !== null
-                  ? ` · ${range.distance_m} m`
-                  : ""}
-              </button>
-            ))}
+            {searchedShootingRanges.length > 0 && (
+              <div className="mt-2 overflow-hidden rounded-lg border border-slate-200 bg-white">
+                {searchedShootingRanges.map((range) => (
+                  <button
+                    key={range.id}
+                    type="button"
+                    onClick={() => {
+                      setShootingRangeId(range.id);
+                      setShootingRangeSearch("");
+                    }}
+                    className="block w-full border-b border-slate-100 px-4 py-3 text-left text-sm text-slate-900 last:border-b-0"
+                  >
+                    {range.name}
+                    {range.city ? ` · ${range.city}` : ""}
+                    {range.distance_m !== null
+                      ? ` · ${range.distance_m} m`
+                      : ""}
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
         )}
       </div>
     </div>
 
+    {!isTrainingMode && (
     <div className="mt-6">
       <p className="mb-3 text-sm font-medium text-slate-700">
         Eingabeart
@@ -1147,6 +1357,7 @@ router.push("/results");
         </label>
       </div>
     </div>
+    )}
   </>
 )}
 
@@ -1154,6 +1365,7 @@ router.push("/results");
             <>
             {showResultDetails && (
   <>
+              {!isTrainingMode && (
               <div className="mt-6">
                 <p className="mb-3 text-sm font-medium text-slate-700">
                   Schussmodus
@@ -1179,6 +1391,7 @@ router.push("/results");
                   </label>
                 </div>
               </div>
+              )}
 
               {shotMode === "fixed" && (
                 <div className="mt-5 max-w-xs">
@@ -1190,6 +1403,7 @@ router.push("/results");
                     type="number"
                     min={1}
                     value={plannedShots}
+                    readOnly={isTrainingMode}
                     onChange={(e) =>
                       setPlannedShots(Number(e.target.value))
                     }
@@ -1396,6 +1610,7 @@ selectedScore !== null ? (
           ↶ Letzten Schuss entfernen
         </button>
 
+        {!isTrainingMode && (
         <button
           type="button"
           onClick={() => saveResult(false)}
@@ -1406,6 +1621,7 @@ selectedScore !== null ? (
             ? "Wird gespeichert..."
             : "Resultat speichern"}
         </button>
+        )}
         <button
   type="button"
   onClick={() => saveResult(true)}
@@ -1414,7 +1630,9 @@ selectedScore !== null ? (
 >
   {saving
     ? "Wird gespeichert..."
-    : "Speichern & nächstes Resultat"}
+    : isTrainingMode
+      ? "Resultat speichern & zur Programmauswahl"
+      : "Speichern & nächstes Resultat"}
 </button>
       </div>
     </div>
