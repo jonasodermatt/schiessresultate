@@ -246,6 +246,13 @@ export default function ResultDetailPage() {
 
   const equipment = getEquipment();
   const shootingRange = getShootingRange();
+  const isCrossbow30m =
+  result.distance_m === 30 &&
+  equipment?.name.toLowerCase().includes("armbrust");
+
+const targetType = isCrossbow30m
+  ? "crossbow30m"
+  : "default";
   const shots = [...(result.result_shots ?? [])].sort(
     (a, b) => a.shot_number - b.shot_number
   );
@@ -336,7 +343,14 @@ export default function ResultDetailPage() {
             <h2 className="text-lg font-bold text-slate-900">Schussbild</h2>
             <p className="mt-1 text-sm text-slate-500">Alle Treffer mit gespeicherter Position.</p>
             <div className="mt-6">
-              <Target selectedX={null} selectedY={null} selectedScore={null} readOnly shots={shots} />
+              <Target
+  selectedX={null}
+  selectedY={null}
+  selectedScore={null}
+  targetType={targetType}
+  readOnly
+  shots={shots}
+/>
             </div>
             <p className="mt-3 text-center text-xs text-slate-500">
               Die Zahl im Treffer entspricht der Schussnummer.

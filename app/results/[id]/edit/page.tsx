@@ -236,6 +236,15 @@ export default function EditResultPage() {
   }, [params.id, router]);
 
   const selectedEquipment = equipment.find((item) => item.id === equipmentId);
+  const isCrossbow30m =
+  selectedDistance === 30 &&
+  selectedEquipment?.name
+    .toLowerCase()
+    .includes("armbrust");
+
+const targetType = isCrossbow30m
+  ? "crossbow30m"
+  : "default";
   const availableDistances = selectedEquipment?.equipment_distances ?? [];
   const availablePositions = selectedEquipment?.equipment_positions ?? [];
 
@@ -512,7 +521,26 @@ export default function EditResultPage() {
                         <h3 className="font-bold text-slate-900">Position für Schuss {shot.shot_number}</h3>
                         <p className="mt-2 text-sm text-slate-500">Aktueller Wert: {shot.score}</p>
                         <p className="mt-1 text-sm text-slate-500">{shot.x_position !== null && shot.y_position !== null ? `x: ${shot.x_position} · y: ${shot.y_position}` : "Für diesen Schuss ist noch keine Position gespeichert."}</p>
-                        <Target selectedX={shot.x_position} selectedY={shot.y_position} selectedScore={shot.score} onSelect={(x, y, score) => setShots((current) => current.map((currentShot, shotIndex) => shotIndex === index ? { ...currentShot, score, x_position: x, y_position: y } : currentShot))} />
+                        <Target
+  selectedX={shot.x_position}
+  selectedY={shot.y_position}
+  selectedScore={shot.score}
+  targetType={targetType}
+  onSelect={(x, y, score) =>
+    setShots((current) =>
+      current.map((currentShot, shotIndex) =>
+        shotIndex === index
+          ? {
+              ...currentShot,
+              score,
+              x_position: x,
+              y_position: y,
+            }
+          : currentShot
+      )
+    )
+  }
+/>
                       </div>
                     )}
                   </div>
