@@ -17,6 +17,7 @@ type EquipmentPosition = {
 type Equipment = {
   id: string;
   name: string;
+  category: string | null;
 
   iris_min: number | null;
   iris_max: number | null;
@@ -200,6 +201,7 @@ useEffect(() => {
       .select(`
         id,
         name,
+        category,
         iris_min,
         iris_max,
         front_sight_min,
@@ -534,6 +536,22 @@ useEffect(() => {
 const selectedEquipment = equipment.find(
   (item) => item.id === equipmentId
 );
+
+const isCrossbow30m =
+  selectedDistance === 30 &&
+  (
+    selectedEquipment?.category
+      ?.toLowerCase()
+      .includes("armbrust") ||
+    selectedEquipment?.name
+      .toLowerCase()
+      .includes("armbrust")
+  );
+
+const targetType =
+  isCrossbow30m
+    ? "crossbow30m"
+    : "default";
 
 // Distanzen des ausgewählten Sportgeräts
 const availableDistances =
@@ -1456,6 +1474,7 @@ router.push("/results");
   selectedX={selectedX}
   selectedY={selectedY}
   selectedScore={selectedScore}
+  targetType={targetType}
   onSelect={(x, y, score) => {
   if (resultComplete) {
     return;
