@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "../../../lib/supabase";
 import Target from "@/components/Target";
@@ -83,6 +83,7 @@ const [frontSightSetting, setFrontSightSetting] =
   const [totalOnlyShots, setTotalOnlyShots] = useState(10);
   const [notes, setNotes] = useState("");
   const [saving, setSaving] = useState(false);
+  const savingRef = useRef(false);
   const [message, setMessage] = useState("");
   const [showManualInput, setShowManualInput] = useState(false);
   const [trainingProgramLoaded, setTrainingProgramLoaded] = useState(false);
@@ -188,6 +189,8 @@ useEffect(() => {
     } = await supabase.auth.getUser();
 
     if (!user) {
+      savingRef.current = false;
+      setSaving(false);
       router.replace("/login");
       return;
     }
@@ -537,21 +540,34 @@ const selectedEquipment = equipment.find(
   (item) => item.id === equipmentId
 );
 
-const isCrossbow30m =
-  selectedDistance === 30 &&
-  (
-    selectedEquipment?.category
-      ?.toLowerCase()
-      .includes("armbrust") ||
-    selectedEquipment?.name
-      .toLowerCase()
-      .includes("armbrust")
-  );
+const equipmentCategory =
+  selectedEquipment?.category
+    ?.toLowerCase() ?? "";
+
+const equipmentName =
+  selectedEquipment?.name
+    .toLowerCase() ?? "";
+
+const isCrossbow =
+  equipmentCategory.includes("armbrust") ||
+  equipmentName.includes("armbrust");
+
+const isRifle =
+  equipmentCategory.includes("gewehr") ||
+  equipmentName.includes("gewehr");
 
 const targetType =
-  isCrossbow30m
-    ? "crossbow30m"
-    : "default";
+  isCrossbow && selectedDistance === 10
+    ? "crossbow10m"
+    : isCrossbow && selectedDistance === 30
+      ? "crossbow30m"
+      : isRifle && selectedDistance === 10
+        ? "rifle10m"
+        : isRifle && selectedDistance === 50
+          ? "rifle50m"
+          : isRifle && selectedDistance === 300
+            ? "rifle300m"
+            : "default";
 
 // Distanzen des ausgewählten Sportgeräts
 const availableDistances =
@@ -798,6 +814,12 @@ function removeLastShot() {
 }
 
   async function saveResult(saveAndNext = false) {
+    if (savingRef.current) {
+      return;
+    }
+
+    savingRef.current = true;
+    setSaving(true);
     setMessage("");
 
     const {
@@ -811,11 +833,15 @@ function removeLastShot() {
 
     if (!equipmentId) {
       setMessage("Bitte zuerst ein Sportgerät auswählen.");
+      savingRef.current = false;
+      setSaving(false);
       return;
     }
 
     if (inputType === "individual" && shots.length === 0) {
       setMessage("Bitte mindestens einen Schuss erfassen.");
+      savingRef.current = false;
+      setSaving(false);
       return;
     }
 
@@ -827,6 +853,8 @@ function removeLastShot() {
       setMessage(
         `Bitte genau ${plannedShots} Schüsse erfassen.`
       );
+      savingRef.current = false;
+      setSaving(false);
       return;
     }
 
@@ -849,13 +877,14 @@ function removeLastShot() {
         setMessage(
           "Bitte Anzahl Schüsse und Total korrekt eingeben."
         );
+        savingRef.current = false;
+        setSaving(false);
         return;
       }
 
       resultAverage = resultTotal / actualShots;
     }
 
-    setSaving(true);
     let weather = null;
 
 try {
@@ -921,6 +950,7 @@ weather_code: weather?.weatherCode ?? null,
           resultError?.message ?? "Unbekannter Fehler"
         }`
       );
+      savingRef.current = false;
       setSaving(false);
       return;
     }
@@ -943,6 +973,7 @@ weather_code: weather?.weatherCode ?? null,
         setMessage(
           `Resultat gespeichert, aber Fehler bei den Einzelschüssen: ${shotsError.message}`
         );
+        savingRef.current = false;
         setSaving(false);
         return;
       }
@@ -970,6 +1001,7 @@ weather_code: weather?.weatherCode ?? null,
         setMessage(
           `Resultat gespeichert, aber das Trainingsprogramm konnte nicht abgeschlossen werden: ${completeProgramError.message}`
         );
+        savingRef.current = false;
         setSaving(false);
         return;
       }
@@ -1000,6 +1032,7 @@ weather_code: weather?.weatherCode ?? null,
   );
 
   setMessage("Resultat gespeichert. Nächstes Resultat kann erfasst werden.");
+  savingRef.current = false;
   setSaving(false);
 
   setShowResultDetails(false);
@@ -1475,6 +1508,9 @@ router.push("/results");
   selectedY={selectedY}
   selectedScore={selectedScore}
   targetType={targetType}
+  projectileDiameterMm={
+    targetType === "rifle300m" ? 5.6 : undefined
+  }
   onSelect={(x, y, score) => {
   if (resultComplete) {
     return;

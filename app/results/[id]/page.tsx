@@ -16,6 +16,7 @@ type Shot = {
 
 type Equipment = {
   name: string;
+  category: string | null;
   manufacturer: string | null;
   model: string | null;
 };
@@ -100,7 +101,7 @@ export default function ResultDetailPage() {
           weather_wind_speed,
           weather_wind_direction,
           weather_code,
-          equipment (name, manufacturer, model),
+          equipment (name, category, manufacturer, model),
           shooting_ranges (name, city, distance_m),
           result_shots (id, shot_number, score, x_position, y_position)
         `)
@@ -246,13 +247,36 @@ export default function ResultDetailPage() {
 
   const equipment = getEquipment();
   const shootingRange = getShootingRange();
-  const isCrossbow30m =
-  result.distance_m === 30 &&
-  equipment?.name.toLowerCase().includes("armbrust");
 
-const targetType = isCrossbow30m
-  ? "crossbow30m"
-  : "default";
+  const effectiveDistance =
+    result.distance_m ?? shootingRange?.distance_m ?? null;
+
+  const equipmentCategory =
+    equipment?.category?.toLowerCase() ?? "";
+
+  const equipmentName =
+    equipment?.name.toLowerCase() ?? "";
+
+  const isCrossbow =
+    equipmentCategory.includes("armbrust") ||
+    equipmentName.includes("armbrust");
+
+  const isRifle =
+    equipmentCategory.includes("gewehr") ||
+    equipmentName.includes("gewehr");
+
+  const targetType =
+    isCrossbow && effectiveDistance === 10
+      ? "crossbow10m"
+      : isCrossbow && effectiveDistance === 30
+        ? "crossbow30m"
+        : isRifle && effectiveDistance === 10
+          ? "rifle10m"
+          : isRifle && effectiveDistance === 50
+            ? "rifle50m"
+            : isRifle && effectiveDistance === 300
+              ? "rifle300m"
+              : "default";
   const shots = [...(result.result_shots ?? [])].sort(
     (a, b) => a.shot_number - b.shot_number
   );
@@ -348,6 +372,9 @@ const targetType = isCrossbow30m
   selectedY={null}
   selectedScore={null}
   targetType={targetType}
+  projectileDiameterMm={
+    targetType === "rifle300m" ? 5.6 : undefined
+  }
   readOnly
   shots={shots}
 />

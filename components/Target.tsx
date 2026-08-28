@@ -1,6 +1,6 @@
 "use client";
 
-import { useLayoutEffect, useRef, useState } from "react";
+import { useState } from "react";
 
 type TargetShot = {
   id: string;
@@ -10,7 +10,13 @@ type TargetShot = {
   y_position: number | null;
 };
 
-export type TargetType = "default" | "crossbow30m";
+export type TargetType =
+  | "default"
+  | "crossbow30m"
+  | "crossbow10m"
+  | "rifle10m"
+  | "rifle50m"
+  | "rifle300m";
 
 type TargetProps = {
   selectedX: number | null;
@@ -24,28 +30,69 @@ type TargetProps = {
   readOnly?: boolean;
   shots?: TargetShot[];
   targetType?: TargetType;
+  projectileDiameterMm?: number;
 };
 
-type Crossbow30mDefinition = {
+type CrossbowTargetDefinition = {
   targetSizeMm: number;
   scoringDiameterMm: number;
   blackDiameterMm: number;
-  moucheDiameterMm: number;
   tenDiameterMm: number;
   ringWidthMm: number;
   lineWidthMm: number;
   projectileDiameterMm: number;
 };
 
-export const CROSSBOW_30M_TARGET: Crossbow30mDefinition = {
+export const CROSSBOW_30M_TARGET: CrossbowTargetDefinition = {
   targetSizeMm: 200,
   scoringDiameterMm: 114,
   blackDiameterMm: 90,
-  moucheDiameterMm: 2,
   tenDiameterMm: 6,
   ringWidthMm: 6,
   lineWidthMm: 0.15,
   projectileDiameterMm: 6,
+};
+
+export const CROSSBOW_10M_TARGET: CrossbowTargetDefinition = {
+  targetSizeMm: 100,
+  scoringDiameterMm: 45.5,
+  blackDiameterMm: 30.5,
+  tenDiameterMm: 0.5,
+  ringWidthMm: 2.5,
+  lineWidthMm: 0.15,
+  projectileDiameterMm: 4.5,
+};
+
+export const RIFLE_10M_TARGET: CrossbowTargetDefinition = {
+  targetSizeMm: 100,
+  scoringDiameterMm: 45.5,
+  blackDiameterMm: 30.5,
+  tenDiameterMm: 0.5,
+  ringWidthMm: 2.5,
+  lineWidthMm: 0.15,
+  projectileDiameterMm: 4.5,
+};
+
+export const RIFLE_50M_TARGET: CrossbowTargetDefinition = {
+  targetSizeMm: 165,
+  scoringDiameterMm: 154.4,
+  blackDiameterMm: 112.4,
+  tenDiameterMm: 10.4,
+  ringWidthMm: 8,
+  lineWidthMm: 0.15,
+  projectileDiameterMm: 5.6,
+};
+
+export const RIFLE_300M_TARGET: CrossbowTargetDefinition = {
+  targetSizeMm: 1500,
+  scoringDiameterMm: 1000,
+  blackDiameterMm: 600,
+  tenDiameterMm: 100,
+  ringWidthMm: 50,
+  lineWidthMm: 0.15,
+  // 300 m ist kaliberabhängig. 5.6 mm ist nur der Fallback;
+  // über projectileDiameterMm kann 7.5 oder bis 8.0 mm übergeben werden.
+  projectileDiameterMm: 5.6,
 };
 
 function scoreDefaultTarget(
@@ -68,21 +115,12 @@ function scoreDefaultTarget(
   return 0;
 }
 
-/*
- * x / y sind auf die gesamte 200 x 200 mm Kartonfläche normalisiert:
- *
- * x = -1  -> linker Rand  (-100 mm)
- * x =  0  -> Scheibenmitte
- * x = +1  -> rechter Rand (+100 mm)
- *
- * Gleiches gilt für y.
- */
-export function normalizedToMillimeters(
+function normalizedToMillimeters(
+  definition: CrossbowTargetDefinition,
   x: number,
   y: number
 ) {
-  const halfSize =
-    CROSSBOW_30M_TARGET.targetSizeMm / 2;
+  const halfSize = definition.targetSizeMm / 2;
 
   return {
     xMm: x * halfSize,
@@ -90,36 +128,20 @@ export function normalizedToMillimeters(
   };
 }
 
-/*
- * Armbrust 30 m:
- *
- * Ringgrenzen (Radius):
- * 10 =  3 mm
- *  9 =  9 mm
- *  8 = 15 mm
- *  ...
- *  1 = 57 mm
- *
- * Linienwertung:
- * Berührt der 6-mm-Pfeil den höherwertigen Ring,
- * gilt der höhere Wert.
- *
- * Deshalb wird vom Abstand des Pfeilzentrums der
- * Pfeilradius (3 mm) abgezogen.
- */
-export function scoreCrossbow30m(
+function scoreCrossbowTarget(
+  definition: CrossbowTargetDefinition,
   x: number,
   y: number
 ) {
   const { xMm, yMm } =
-    normalizedToMillimeters(x, y);
+    normalizedToMillimeters(definition, x, y);
 
   const centerDistanceMm = Math.sqrt(
     xMm * xMm + yMm * yMm
   );
 
   const projectileRadiusMm =
-    CROSSBOW_30M_TARGET.projectileDiameterMm / 2;
+    definition.projectileDiameterMm / 2;
 
   const effectiveDistanceMm = Math.max(
     0,
@@ -127,7 +149,7 @@ export function scoreCrossbow30m(
   );
 
   const tenRadiusMm =
-    CROSSBOW_30M_TARGET.tenDiameterMm / 2;
+    definition.tenDiameterMm / 2;
 
   if (effectiveDistanceMm <= tenRadiusMm) {
     return 10;
@@ -137,7 +159,7 @@ export function scoreCrossbow30m(
     const ringRadiusMm =
       tenRadiusMm +
       (10 - score) *
-        CROSSBOW_30M_TARGET.ringWidthMm;
+        definition.ringWidthMm;
 
     if (effectiveDistanceMm <= ringRadiusMm) {
       return score;
@@ -147,16 +169,190 @@ export function scoreCrossbow30m(
   return 0;
 }
 
-function getScore(
-  targetType: TargetType,
+export function scoreCrossbow30m(
   x: number,
   y: number
 ) {
+  return scoreCrossbowTarget(
+    CROSSBOW_30M_TARGET,
+    x,
+    y
+  );
+}
+
+export function scoreCrossbow10m(
+  x: number,
+  y: number
+) {
+  return scoreCrossbowTarget(
+    CROSSBOW_10M_TARGET,
+    x,
+    y
+  );
+}
+
+export function scoreRifle10m(
+  x: number,
+  y: number
+) {
+  return scoreCrossbowTarget(
+    RIFLE_10M_TARGET,
+    x,
+    y
+  );
+}
+
+export function scoreRifle50m(
+  x: number,
+  y: number
+) {
+  return scoreCrossbowTarget(
+    RIFLE_50M_TARGET,
+    x,
+    y
+  );
+}
+
+export function scoreRifle300m(
+  x: number,
+  y: number,
+  projectileDiameterMm = 5.6
+) {
+  return scoreCrossbowTarget(
+    {
+      ...RIFLE_300M_TARGET,
+      projectileDiameterMm,
+    },
+    x,
+    y
+  );
+}
+
+/*
+ * Armbrust 10 m Mouche:
+ * Das Schussloch darf den 9er-Kreis von innen nicht berühren.
+ *
+ * 9er-Radius: 2.75 mm
+ * Pfeilradius: 2.25 mm
+ * => Mittelpunkt muss weniger als 0.50 mm vom Zentrum entfernt sein.
+ */
+export function isCrossbow10mMouche(
+  x: number,
+  y: number
+) {
+  const { xMm, yMm } =
+    normalizedToMillimeters(
+      CROSSBOW_10M_TARGET,
+      x,
+      y
+    );
+
+  const centerDistanceMm = Math.sqrt(
+    xMm * xMm + yMm * yMm
+  );
+
+  return centerDistanceMm < 0.5;
+}
+
+function getScore(
+  targetType: TargetType,
+  x: number,
+  y: number,
+  projectileDiameterMm?: number
+) {
+  if (targetType === "crossbow10m") {
+    return scoreCrossbow10m(x, y);
+  }
+
   if (targetType === "crossbow30m") {
     return scoreCrossbow30m(x, y);
   }
 
+  if (targetType === "rifle10m") {
+    return scoreRifle10m(x, y);
+  }
+
+  if (targetType === "rifle50m") {
+    return scoreRifle50m(x, y);
+  }
+
+  if (targetType === "rifle300m") {
+    return scoreRifle300m(
+      x,
+      y,
+      projectileDiameterMm ?? 5.6
+    );
+  }
+
   return scoreDefaultTarget(x, y);
+}
+
+function getZoomScale(
+  targetType: TargetType,
+  zoomLevel: number
+) {
+  const marginFactor = 1.1;
+
+  if (targetType !== "default") {
+    const definition =
+      targetType === "crossbow10m"
+        ? CROSSBOW_10M_TARGET
+        : targetType === "crossbow30m"
+          ? CROSSBOW_30M_TARGET
+          : targetType === "rifle10m"
+            ? RIFLE_10M_TARGET
+            : targetType === "rifle50m"
+              ? RIFLE_50M_TARGET
+              : RIFLE_300M_TARGET;
+
+    const tenRadiusMm =
+      definition.tenDiameterMm / 2;
+
+    const diameterForScore = (
+      score: number
+    ) => {
+      if (score === 10) {
+        return definition.tenDiameterMm;
+      }
+
+      const radiusMm =
+        tenRadiusMm +
+        (10 - score) *
+          definition.ringWidthMm;
+
+      return radiusMm * 2;
+    };
+
+    const visibleDiameterMm =
+      zoomLevel === 1
+        ? definition.scoringDiameterMm
+        : zoomLevel === 2
+          ? diameterForScore(6)
+          : zoomLevel === 3
+            ? diameterForScore(8)
+            : zoomLevel === 4
+              ? diameterForScore(9)
+              : diameterForScore(10);
+
+    return (
+      definition.targetSizeMm /
+      visibleDiameterMm /
+      marginFactor
+    );
+  }
+
+  const visibleFraction =
+    zoomLevel === 1
+      ? 0.9
+      : zoomLevel === 2
+        ? 0.45
+        : zoomLevel === 3
+          ? 0.27
+          : zoomLevel === 4
+            ? 0.18
+            : 0.09;
+
+  return 1 / visibleFraction / marginFactor;
 }
 
 export default function Target({
@@ -167,39 +363,22 @@ export default function Target({
   readOnly = false,
   shots = [],
   targetType = "default",
+  projectileDiameterMm,
 }: TargetProps) {
-  const [zoom, setZoom] = useState(1);
-  const scrollRef =
-    useRef<HTMLDivElement | null>(null);
+  const [zoomLevel, setZoomLevel] =
+    useState(1);
 
-  const targetSize = 300 * zoom;
+  const viewportSize = 300;
+  const zoomScale = getZoomScale(
+    targetType,
+    zoomLevel
+  );
 
-  function changeZoom(nextZoom: number) {
-    const clampedZoom = Math.max(
-      1,
-      Math.min(3, nextZoom)
+  function changeZoomLevel(nextLevel: number) {
+    setZoomLevel(
+      Math.max(1, Math.min(5, nextLevel))
     );
-
-    setZoom(clampedZoom);
   }
-
-  useLayoutEffect(() => {
-    const container = scrollRef.current;
-
-    if (!container) {
-      return;
-    }
-
-    container.scrollLeft =
-      (container.scrollWidth -
-        container.clientWidth) /
-      2;
-
-    container.scrollTop =
-      (container.scrollHeight -
-        container.clientHeight) /
-      2;
-  }, [zoom]);
 
   function handleTargetClick(
     event: React.MouseEvent<HTMLDivElement>
@@ -225,7 +404,8 @@ export default function Target({
     const score = getScore(
       targetType,
       x,
-      y
+      y,
+      projectileDiameterMm
     );
 
     onSelect?.(
@@ -234,11 +414,6 @@ export default function Target({
       score
     );
   }
-
-  const mmToPercent = (mm: number) =>
-    (mm /
-      CROSSBOW_30M_TARGET.targetSizeMm) *
-    100;
 
   function renderDefaultTarget() {
     return (
@@ -295,7 +470,8 @@ export default function Target({
             left: "50%",
             top: "50%",
             transform:
-              "translate(-50%, -50%)",
+              `translate(-50%, -50%) scale(${1 / zoomScale})`,
+            transformOrigin: "center",
             color: "white",
             fontSize: "11px",
             fontWeight: "bold",
@@ -321,7 +497,8 @@ export default function Target({
                     50 - radiusPercent
                   }%`,
                   transform:
-                    "translate(-50%, -50%)",
+                    `translate(-50%, -50%) scale(${1 / zoomScale})`,
+                  transformOrigin: "center",
                   color:
                     score >= 3
                       ? "white"
@@ -341,24 +518,19 @@ export default function Target({
     );
   }
 
-  function renderCrossbow30mTarget() {
-    const scoringDiameterPercent =
-      mmToPercent(
-        CROSSBOW_30M_TARGET.scoringDiameterMm
-      );
+  function renderCrossbowTarget(
+    definition: CrossbowTargetDefinition
+  ) {
+    const mmToPercent = (mm: number) =>
+      (mm / definition.targetSizeMm) * 100;
 
     const blackDiameterPercent =
       mmToPercent(
-        CROSSBOW_30M_TARGET.blackDiameterMm
-      );
-
-    const moucheDiameterPercent =
-      mmToPercent(
-        CROSSBOW_30M_TARGET.moucheDiameterMm
+        definition.blackDiameterMm
       );
 
     const tenRadiusMm =
-      CROSSBOW_30M_TARGET.tenDiameterMm / 2;
+      definition.tenDiameterMm / 2;
 
     const ringDiametersMm = Array.from(
       { length: 10 },
@@ -367,7 +539,7 @@ export default function Target({
         const radius =
           tenRadiusMm +
           (10 - score) *
-            CROSSBOW_30M_TARGET.ringWidthMm;
+            definition.ringWidthMm;
 
         return {
           score,
@@ -376,9 +548,15 @@ export default function Target({
       }
     );
 
+    const lineWidthPx = Math.max(
+      0.45,
+      (definition.lineWidthMm /
+        definition.targetSizeMm) *
+        viewportSize
+    );
+
     return (
       <>
-        {/* kompletter 200 x 200 mm Karton */}
         <div
           style={{
             position: "absolute",
@@ -388,7 +566,6 @@ export default function Target({
           }}
         />
 
-        {/* Schwarzer Spiegel: 90 mm */}
         <div
           style={{
             position: "absolute",
@@ -406,23 +583,14 @@ export default function Target({
           }}
         />
 
-        {/* Ringlinien 10 bis 1 */}
         {ringDiametersMm.map(
           ({ score, diameterMm }) => {
             const diameterPercent =
               mmToPercent(diameterMm);
 
-            const lineWidthPx =
-              Math.max(
-                1,
-                (CROSSBOW_30M_TARGET.lineWidthMm /
-                  CROSSBOW_30M_TARGET.targetSizeMm) *
-                  targetSize
-              );
-
             const lineColor =
               diameterMm <=
-              CROSSBOW_30M_TARGET.blackDiameterMm
+              definition.blackDiameterMm
                 ? "#f8fafc"
                 : "#111827";
 
@@ -449,45 +617,6 @@ export default function Target({
           }
         )}
 
-        {/* Äusserste 1er-Grenze / 114 mm */}
-        <div
-          style={{
-            position: "absolute",
-            width: `${scoringDiameterPercent}%`,
-            height: `${scoringDiameterPercent}%`,
-            left: `${
-              (100 - scoringDiameterPercent) / 2
-            }%`,
-            top: `${
-              (100 - scoringDiameterPercent) / 2
-            }%`,
-            border: "1px solid #111827",
-            borderRadius: "50%",
-            boxSizing: "border-box",
-            pointerEvents: "none",
-          }}
-        />
-
-        {/* Weisse Mouche: 2 mm */}
-        <div
-          style={{
-            position: "absolute",
-            width: `${moucheDiameterPercent}%`,
-            height: `${moucheDiameterPercent}%`,
-            left: `${
-              (100 - moucheDiameterPercent) / 2
-            }%`,
-            top: `${
-              (100 - moucheDiameterPercent) / 2
-            }%`,
-            borderRadius: "50%",
-            backgroundColor: "#ffffff",
-            pointerEvents: "none",
-            zIndex: 4,
-          }}
-        />
-
-        {/* Ringzahlen oben */}
         {ringDiametersMm.map(
           ({ score, diameterMm }) => {
             const radiusMm =
@@ -497,7 +626,7 @@ export default function Target({
               score === 10
                 ? 0
                 : radiusMm -
-                  CROSSBOW_30M_TARGET.ringWidthMm;
+                  definition.ringWidthMm;
 
             const labelRadiusMm =
               score === 10
@@ -523,10 +652,11 @@ export default function Target({
                           labelOffsetPercent
                         }%`,
                   transform:
-                    "translate(-50%, -50%)",
+                    `translate(-50%, -50%) scale(${1 / zoomScale})`,
+                  transformOrigin: "center",
                   color:
                     radiusMm <=
-                    CROSSBOW_30M_TARGET.blackDiameterMm /
+                    definition.blackDiameterMm /
                       2
                       ? "#ffffff"
                       : "#111827",
@@ -548,64 +678,87 @@ export default function Target({
     );
   }
 
+  const markerScale = 1 / zoomScale;
+
   return (
     <div>
       <div className="mb-3 flex items-center justify-center gap-2">
         <button
           type="button"
           onClick={() =>
-            changeZoom(zoom - 0.5)
+            changeZoomLevel(zoomLevel - 1)
           }
-          className="rounded-lg border border-slate-300 bg-white px-3 py-2 font-medium text-slate-700"
+          disabled={zoomLevel === 1}
+          className="rounded-lg border border-slate-300 bg-white px-3 py-2 font-medium text-slate-700 disabled:cursor-not-allowed disabled:opacity-40"
         >
           −
         </button>
 
-        <span className="min-w-14 text-center text-sm font-medium text-slate-700">
-          {zoom}×
+        <span className="min-w-28 text-center text-sm font-medium text-slate-700">
+          Zoomstufe {zoomLevel}
         </span>
 
         <button
           type="button"
           onClick={() =>
-            changeZoom(zoom + 0.5)
+            changeZoomLevel(zoomLevel + 1)
           }
-          className="rounded-lg border border-slate-300 bg-white px-3 py-2 font-medium text-slate-700"
+          disabled={zoomLevel === 5}
+          className="rounded-lg border border-slate-300 bg-white px-3 py-2 font-medium text-slate-700 disabled:cursor-not-allowed disabled:opacity-40"
         >
           +
         </button>
       </div>
 
       <div
-        ref={scrollRef}
         style={{
-          width: "300px",
-          height: "300px",
+          width: `${viewportSize}px`,
+          height: `${viewportSize}px`,
           margin: "0 auto",
           overflow: "hidden",
           borderRadius: "12px",
           position: "relative",
+          backgroundColor: "white",
         }}
       >
         <div
           onClick={handleTargetClick}
           style={{
-            position: "relative",
-            width: `${targetSize}px`,
-            height: `${targetSize}px`,
-            flexShrink: 0,
+            position: "absolute",
+            left: "50%",
+            top: "50%",
+            width: `${viewportSize}px`,
+            height: `${viewportSize}px`,
+            transform: `translate(-50%, -50%) scale(${zoomScale})`,
+            transformOrigin: "center",
             backgroundColor: "white",
-            overflow: "hidden",
             cursor: readOnly
               ? "default"
               : "crosshair",
           }}
         >
           {targetType === "crossbow30m"
-            ? renderCrossbow30mTarget()
-            : renderDefaultTarget()}
+            ? renderCrossbowTarget(
+                CROSSBOW_30M_TARGET
+              )
+            : targetType === "crossbow10m"
+              ? renderCrossbowTarget(
+                  CROSSBOW_10M_TARGET
+                )
+              : targetType === "rifle10m"
+                ? renderCrossbowTarget(
+                    RIFLE_10M_TARGET
+                  )
+                : targetType === "rifle50m"
+                  ? renderCrossbowTarget(
+                      RIFLE_50M_TARGET
+                    )
+                  : targetType === "rifle300m"
+                    ? renderCrossbowTarget(
+                        RIFLE_300M_TARGET
+                      )
+                    : renderDefaultTarget()}
 
-          {/* Gespeicherte Treffer */}
           {shots
             .filter(
               (shot) =>
@@ -637,7 +790,8 @@ export default function Target({
                   width: "24px",
                   height: "24px",
                   transform:
-                    "translate(-50%, -50%)",
+                    `translate(-50%, -50%) scale(${markerScale})`,
+                  transformOrigin: "center",
                   borderRadius: "50%",
                   backgroundColor: "#dc2626",
                   border: "2px solid white",
@@ -655,7 +809,6 @@ export default function Target({
               </div>
             ))}
 
-          {/* Gewählter Treffer */}
           {selectedX !== null &&
             selectedY !== null &&
             selectedScore !== null && (
@@ -673,7 +826,8 @@ export default function Target({
                   width: "28px",
                   height: "28px",
                   transform:
-                    "translate(-50%, -50%)",
+                    `translate(-50%, -50%) scale(${markerScale})`,
+                  transformOrigin: "center",
                   borderRadius: "50%",
                   border: "2px solid white",
                   backgroundColor: "#dc2626",

@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { supabase } from "../../lib/supabase";
 import PerformanceChart from "../../components/PerformanceChart";
 import ShotDistributionChart from "../../components/ShotDistributionChart";
+import type { TargetType } from "../../components/Target";
 
 type Result = {
   id: string;
@@ -24,6 +25,7 @@ type Result = {
 type Equipment = {
   id: string;
   name: string;
+  category: string | null;
 };
 
 type StatisticGroup = {
@@ -62,6 +64,58 @@ type ResultShot = {
   x_position: number | null;
   y_position: number | null;
 };
+
+type ShotTargetGroup = {
+  key: string;
+  label: string;
+  targetType: TargetType;
+  projectileDiameterMm?: number;
+  shots: ResultShot[];
+};
+
+function getTargetTypeForResult(
+  result: Result,
+  equipmentById: Map<string, Equipment>
+): TargetType {
+  const selectedEquipment = result.equipment_id
+    ? equipmentById.get(result.equipment_id)
+    : undefined;
+
+  const equipmentCategory =
+    selectedEquipment?.category?.toLowerCase() ?? "";
+
+  const equipmentName =
+    selectedEquipment?.name.toLowerCase() ?? "";
+
+  const isCrossbow =
+    equipmentCategory.includes("armbrust") ||
+    equipmentName.includes("armbrust");
+
+  const isRifle =
+    equipmentCategory.includes("gewehr") ||
+    equipmentName.includes("gewehr");
+
+  if (isCrossbow && result.distance_m === 10) return "crossbow10m";
+  if (isCrossbow && result.distance_m === 30) return "crossbow30m";
+  if (isRifle && result.distance_m === 10) return "rifle10m";
+  if (isRifle && result.distance_m === 50) return "rifle50m";
+  if (isRifle && result.distance_m === 300) return "rifle300m";
+
+  return "default";
+}
+
+function getTargetLabel(targetType: TargetType) {
+  const labels: Record<TargetType, string> = {
+    default: "Weitere Scheiben",
+    crossbow10m: "Armbrust 10 m",
+    crossbow30m: "Armbrust 30 m",
+    rifle10m: "Gewehr 10 m",
+    rifle50m: "Gewehr 50 m",
+    rifle300m: "Gewehr 300 m",
+  };
+
+  return labels[targetType];
+}
 
 function getPositionLabel(position: string | null) {
   if (!position) return "Nicht zugeordnet";
@@ -139,7 +193,7 @@ export default function StatisticsPage() {
         error: equipmentError,
       } = await supabase
         .from("equipment")
-        .select("id, name")
+        .select("id, name, category")
         .order("name", { ascending: true });
 
       if (equipmentError) {
@@ -659,26 +713,68 @@ export default function StatisticsPage() {
     );
   }, [filteredResults]);
 
-  // Treffer passend zu den
-  // gefilterten Resultaten
-  const filteredShots = useMemo(() => {
-    const resultIds = new Set(
-      filteredResults.map(
-        (result) => result.id
-      )
+  // Treffer passend zu den gefilterten Resultaten.
+  // Unterschiedliche Scheibentypen werden bewusst getrennt,
+  // damit z.B. Armbrust 30 m und Gewehr 300 m nicht
+  // auf dieselbe Scheibe gelegt werden.
+  const shotTargetGroups = useMemo<ShotTargetGroup[]>(() => {
+    const equipmentById = new Map(
+      equipment.map((item) => [item.id, item])
     );
 
-    return resultShots.filter(
-      (shot) =>
-        resultIds.has(
-          shot.result_id
-        ) &&
-        shot.x_position !== null &&
-        shot.y_position !== null
+    const filteredResultsById = new Map(
+      filteredResults.map((result) => [result.id, result])
     );
+
+    const groupsByTarget = new Map<TargetType, ResultShot[]>();
+
+    for (const shot of resultShots) {
+      if (
+        shot.x_position === null ||
+        shot.y_position === null
+      ) {
+        continue;
+      }
+
+      const result = filteredResultsById.get(shot.result_id);
+
+      if (!result) {
+        continue;
+      }
+
+      const targetType = getTargetTypeForResult(
+        result,
+        equipmentById
+      );
+
+      const current = groupsByTarget.get(targetType) ?? [];
+      current.push(shot);
+      groupsByTarget.set(targetType, current);
+    }
+
+    const order: TargetType[] = [
+      "crossbow10m",
+      "crossbow30m",
+      "rifle10m",
+      "rifle50m",
+      "rifle300m",
+      "default",
+    ];
+
+    return order
+      .filter((targetType) => (groupsByTarget.get(targetType)?.length ?? 0) > 0)
+      .map((targetType) => ({
+        key: targetType,
+        label: getTargetLabel(targetType),
+        targetType,
+        projectileDiameterMm:
+          targetType === "rifle300m" ? 5.6 : undefined,
+        shots: groupsByTarget.get(targetType) ?? [],
+      }));
   }, [
     resultShots,
     filteredResults,
+    equipment,
   ]);
 
   function formatDate(
@@ -927,14 +1023,23 @@ export default function StatisticsPage() {
             </section>
 
             {/* Trefferlage */}
-            {filteredShots.length >
-              0 && (
-              <section className="mt-8">
-                <ShotDistributionChart
-                  shots={
-                    filteredShots
-                  }
-                />
+            {shotTargetGroups.length > 0 && (
+              <section className="mt-8 grid gap-6">
+                {shotTargetGroups.map((group) => (
+                  <ShotDistributionChart
+                    key={group.key}
+                    shots={group.shots}
+                    targetType={group.targetType}
+                    title={
+                      shotTargetGroups.length > 1
+                        ? group.label
+                        : undefined
+                    }
+                    projectileDiameterMm={
+                      group.projectileDiameterMm
+                    }
+                  />
+                ))}
               </section>
             )}
 

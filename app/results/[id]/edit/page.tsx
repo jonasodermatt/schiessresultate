@@ -17,6 +17,7 @@ type EquipmentPosition = {
 type Equipment = {
   id: string;
   name: string;
+  category: string | null;
   iris_min: number | null;
   iris_max: number | null;
   front_sight_min: number | null;
@@ -87,6 +88,7 @@ export default function EditResultPage() {
         .select(`
           id,
           name,
+          category,
           iris_min,
           iris_max,
           front_sight_min,
@@ -236,15 +238,33 @@ export default function EditResultPage() {
   }, [params.id, router]);
 
   const selectedEquipment = equipment.find((item) => item.id === equipmentId);
-  const isCrossbow30m =
-  selectedDistance === 30 &&
-  selectedEquipment?.name
-    .toLowerCase()
-    .includes("armbrust");
 
-const targetType = isCrossbow30m
-  ? "crossbow30m"
-  : "default";
+  const equipmentCategory =
+    selectedEquipment?.category?.toLowerCase() ?? "";
+
+  const equipmentName =
+    selectedEquipment?.name.toLowerCase() ?? "";
+
+  const isCrossbow =
+    equipmentCategory.includes("armbrust") ||
+    equipmentName.includes("armbrust");
+
+  const isRifle =
+    equipmentCategory.includes("gewehr") ||
+    equipmentName.includes("gewehr");
+
+  const targetType =
+    isCrossbow && selectedDistance === 10
+      ? "crossbow10m"
+      : isCrossbow && selectedDistance === 30
+        ? "crossbow30m"
+        : isRifle && selectedDistance === 10
+          ? "rifle10m"
+          : isRifle && selectedDistance === 50
+            ? "rifle50m"
+            : isRifle && selectedDistance === 300
+              ? "rifle300m"
+              : "default";
   const availableDistances = selectedEquipment?.equipment_distances ?? [];
   const availablePositions = selectedEquipment?.equipment_positions ?? [];
 
@@ -526,6 +546,9 @@ const targetType = isCrossbow30m
   selectedY={shot.y_position}
   selectedScore={shot.score}
   targetType={targetType}
+  projectileDiameterMm={
+    targetType === "rifle300m" ? 5.6 : undefined
+  }
   onSelect={(x, y, score) =>
     setShots((current) =>
       current.map((currentShot, shotIndex) =>

@@ -1,7 +1,10 @@
 "use client";
 
+import Target, { type TargetType } from "./Target";
+
 type ShotPoint = {
   id: string;
+  shot_number: number;
   score: number;
   x_position: number | null;
   y_position: number | null;
@@ -9,10 +12,41 @@ type ShotPoint = {
 
 type ShotDistributionChartProps = {
   shots: ShotPoint[];
+  targetType: TargetType;
+  title?: string;
+  projectileDiameterMm?: number;
 };
+
+type TargetScale = {
+  targetSizeMm: number | null;
+  ringWidthMm: number | null;
+};
+
+function getTargetScale(targetType: TargetType): TargetScale {
+  if (targetType === "crossbow30m") {
+    return { targetSizeMm: 200, ringWidthMm: 6 };
+  }
+
+  if (targetType === "crossbow10m" || targetType === "rifle10m") {
+    return { targetSizeMm: 100, ringWidthMm: 2.5 };
+  }
+
+  if (targetType === "rifle50m") {
+    return { targetSizeMm: 165, ringWidthMm: 8 };
+  }
+
+  if (targetType === "rifle300m") {
+    return { targetSizeMm: 1500, ringWidthMm: 50 };
+  }
+
+  return { targetSizeMm: null, ringWidthMm: null };
+}
 
 export default function ShotDistributionChart({
   shots,
+  targetType,
+  title,
+  projectileDiameterMm,
 }: ShotDistributionChartProps) {
   const positionedShots = shots.filter(
     (shot) =>
@@ -26,243 +60,135 @@ export default function ShotDistributionChart({
 
   const averageX =
     positionedShots.reduce(
-      (sum, shot) =>
-        sum + Number(shot.x_position),
+      (sum, shot) => sum + Number(shot.x_position),
       0
     ) / positionedShots.length;
 
   const averageY =
     positionedShots.reduce(
-      (sum, shot) =>
-        sum + Number(shot.y_position),
+      (sum, shot) => sum + Number(shot.y_position),
       0
     ) / positionedShots.length;
 
   const averageDistance =
     positionedShots.reduce((sum, shot) => {
-      const dx =
-        Number(shot.x_position) - averageX;
-
-      const dy =
-        Number(shot.y_position) - averageY;
+      const dx = Number(shot.x_position) - averageX;
+      const dy = Number(shot.y_position) - averageY;
 
       return sum + Math.sqrt(dx * dx + dy * dy);
     }, 0) / positionedShots.length;
 
+  const { targetSizeMm, ringWidthMm } = getTargetScale(targetType);
+
+  const averageXmm =
+    targetSizeMm !== null
+      ? averageX * (targetSizeMm / 2)
+      : null;
+
+  const averageYmm =
+    targetSizeMm !== null
+      ? averageY * (targetSizeMm / 2)
+      : null;
+
+  const averageDistanceMm =
+    targetSizeMm !== null
+      ? averageDistance * (targetSizeMm / 2)
+      : null;
+
   function describeAxis(
-    value: number,
+    normalizedValue: number,
+    millimeterValue: number | null,
     negative: string,
     positive: string
   ) {
-    const absolute = Math.abs(value);
-
-    if (absolute <= 0.02) {
-      return "Mitte";
-    }
-
     const direction =
-      value < 0 ? negative : positive;
+      normalizedValue < 0 ? negative : positive;
 
-    if (absolute <= 0.08) {
-      return `leicht ${direction}`;
+    if (
+      millimeterValue !== null &&
+      ringWidthMm !== null
+    ) {
+      const rings = Math.abs(millimeterValue) / ringWidthMm;
+
+      if (rings <= 0.33) return "Mitte";
+      if (rings <= 1) return `leicht ${direction}`;
+      if (rings <= 2) return direction;
+      return `deutlich ${direction}`;
     }
 
-    if (absolute <= 0.16) {
-      return direction;
-    }
+    const absolute = Math.abs(normalizedValue);
 
+    if (absolute <= 0.02) return "Mitte";
+    if (absolute <= 0.08) return `leicht ${direction}`;
+    if (absolute <= 0.16) return direction;
     return `deutlich ${direction}`;
   }
 
   const horizontalPosition = describeAxis(
     averageX,
+    averageXmm,
     "links",
     "rechts"
   );
 
   const verticalPosition = describeAxis(
     averageY,
+    averageYmm,
     "tief",
     "hoch"
   );
 
-  function describeSpread(distance: number) {
-    if (distance <= 0.05) {
-      return "Sehr eng";
+  function describeSpread(
+    normalizedDistance: number,
+    millimeterDistance: number | null
+  ) {
+    if (
+      millimeterDistance !== null &&
+      ringWidthMm !== null
+    ) {
+      const rings = millimeterDistance / ringWidthMm;
+
+      if (rings <= 0.5) return "Sehr eng";
+      if (rings <= 1) return "Eng";
+      if (rings <= 2) return "Mittel";
+      return "Breit";
     }
 
-    if (distance <= 0.1) {
-      return "Eng";
-    }
-
-    if (distance <= 0.18) {
-      return "Mittel";
-    }
-
+    if (normalizedDistance <= 0.05) return "Sehr eng";
+    if (normalizedDistance <= 0.1) return "Eng";
+    if (normalizedDistance <= 0.18) return "Mittel";
     return "Breit";
   }
 
-  const spreadLabel =
-    describeSpread(averageDistance);
+  const spreadLabel = describeSpread(
+    averageDistance,
+    averageDistanceMm
+  );
 
   return (
     <div className="rounded-2xl border bg-white p-6 shadow-sm">
       <div>
         <h2 className="text-xl font-bold text-slate-900">
-          Trefferlage
+          {title ? `Trefferlage · ${title}` : "Trefferlage"}
         </h2>
 
         <p className="mt-1 text-sm text-slate-600">
-          Alle Treffer der aktuell gefilterten Resultate.
+          Treffer der aktuell gefilterten Resultate auf der passenden Scheibe.
         </p>
       </div>
 
-      {/* Scheibe */}
-      <div
-        style={{
-          position: "relative",
-          width: "320px",
-          height: "320px",
-          margin: "24px auto 0",
-          borderRadius: "50%",
-          backgroundColor: "white",
-          overflow: "hidden",
-          border: "1px solid #cbd5e1",
-        }}
-      >
-        {/* Dunkler Bereich */}
-        <div
-          style={{
-            position: "absolute",
-            width: "72%",
-            height: "72%",
-            left: "14%",
-            top: "14%",
-            borderRadius: "50%",
-            backgroundColor: "#1e293b",
-          }}
+      <div className="mt-6 flex justify-center">
+        <Target
+          selectedX={null}
+          selectedY={null}
+          selectedScore={null}
+          targetType={targetType}
+          projectileDiameterMm={projectileDiameterMm}
+          readOnly
+          shots={positionedShots}
         />
-
-        {/* Ringlinien */}
-        {[9, 18, 27, 36, 45, 54, 63, 72, 81].map(
-          (diameter) => (
-            <div
-              key={diameter}
-              style={{
-                position: "absolute",
-                width: `${diameter}%`,
-                height: `${diameter}%`,
-                left: `${(100 - diameter) / 2}%`,
-                top: `${(100 - diameter) / 2}%`,
-                border: "1px solid #64748b",
-                borderRadius: "50%",
-                boxSizing: "border-box",
-                pointerEvents: "none",
-              }}
-            />
-          )
-        )}
-
-        {/* Äußere Grenze */}
-        <div
-          style={{
-            position: "absolute",
-            width: "90%",
-            height: "90%",
-            left: "5%",
-            top: "5%",
-            border: "4px solid black",
-            borderRadius: "50%",
-            boxSizing: "border-box",
-            pointerEvents: "none",
-          }}
-        />
-
-        {/* Treffer */}
-        {positionedShots.map((shot) => (
-          <div
-            key={shot.id}
-            title={`${shot.score} Punkte`}
-            style={{
-              position: "absolute",
-              left: `${
-                (((shot.x_position ?? 0) + 1) / 2) *
-                100
-              }%`,
-              top: `${
-                ((1 - (shot.y_position ?? 0)) / 2) *
-                100
-              }%`,
-              width: "10px",
-              height: "10px",
-              transform: "translate(-50%, -50%)",
-              borderRadius: "50%",
-              backgroundColor: "#dc2626",
-              border: "1px solid white",
-              zIndex: 10,
-              pointerEvents: "none",
-            }}
-          />
-        ))}
-
-        {/* Streuungskreis */}
-        <div
-          title="Durchschnittliche Streuung"
-          style={{
-            position: "absolute",
-            left: `${((averageX + 1) / 2) * 100}%`,
-            top: `${((1 - averageY) / 2) * 100}%`,
-            width: `${averageDistance * 100}%`,
-            height: `${averageDistance * 100}%`,
-            transform: "translate(-50%, -50%)",
-            borderRadius: "50%",
-            border: "2px dashed #facc15",
-            backgroundColor:
-              "rgba(250, 204, 21, 0.08)",
-            zIndex: 15,
-            pointerEvents: "none",
-          }}
-        />
-
-        {/* Mittlere Trefferlage */}
-        <div
-          title="Mittlere Trefferlage"
-          style={{
-            position: "absolute",
-            left: `${((averageX + 1) / 2) * 100}%`,
-            top: `${((1 - averageY) / 2) * 100}%`,
-            width: "20px",
-            height: "20px",
-            transform: "translate(-50%, -50%)",
-            zIndex: 20,
-            pointerEvents: "none",
-          }}
-        >
-          <div
-            style={{
-              position: "absolute",
-              left: "9px",
-              top: "0",
-              width: "2px",
-              height: "20px",
-              backgroundColor: "#facc15",
-            }}
-          />
-
-          <div
-            style={{
-              position: "absolute",
-              left: "0",
-              top: "9px",
-              width: "20px",
-              height: "2px",
-              backgroundColor: "#facc15",
-            }}
-          />
-        </div>
       </div>
 
-      {/* Kennzahlen */}
       <div className="mt-6 grid gap-4 sm:grid-cols-3">
         <div className="rounded-xl bg-slate-50 p-4">
           <p className="text-sm text-slate-600">
@@ -284,6 +210,12 @@ export default function ShotDistributionChart({
             {" / "}
             {verticalPosition}
           </p>
+
+          {averageXmm !== null && averageYmm !== null && (
+            <p className="mt-1 text-xs text-slate-500">
+              Ø x {averageXmm.toFixed(1)} mm · y {averageYmm.toFixed(1)} mm
+            </p>
+          )}
         </div>
 
         <div className="rounded-xl bg-slate-50 p-4">
@@ -297,7 +229,9 @@ export default function ShotDistributionChart({
 
           <p className="mt-1 text-xs text-slate-500">
             Ø Abstand{" "}
-            {averageDistance.toFixed(3)}
+            {averageDistanceMm !== null
+              ? `${averageDistanceMm.toFixed(1)} mm`
+              : averageDistance.toFixed(3)}
           </p>
         </div>
       </div>
