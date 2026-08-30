@@ -5,6 +5,9 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "../../../lib/supabase";
 import Target from "@/components/Target";
+import PhotoTargetCapture, {
+  type PhotoDetectedShot,
+} from "@/components/PhotoTargetCapture";
 
 type EquipmentDistance = {
   distance_m: number;
@@ -42,6 +45,10 @@ type ShootingRange = {
   latitude: number | null;
   longitude: number | null;
 };
+
+const PHOTO_CAPTURE_USER_IDS = new Set([
+  "ca9cc641-96b7-4cec-8d25-6f4ef3f53eff",
+]);
 
 export default function NewResultPage() {
   const router = useRouter();
@@ -86,6 +93,8 @@ const [frontSightSetting, setFrontSightSetting] =
   const savingRef = useRef(false);
   const [message, setMessage] = useState("");
   const [showManualInput, setShowManualInput] = useState(false);
+  const [showPhotoCapture, setShowPhotoCapture] = useState(false);
+  const [photoCaptureAllowed, setPhotoCaptureAllowed] = useState(false);
   const [trainingProgramLoaded, setTrainingProgramLoaded] = useState(false);
 
   const [shootingDate, setShootingDate] = useState(() => {
@@ -197,6 +206,8 @@ useEffect(() => {
       router.replace("/login");
       return;
     }
+
+    setPhotoCaptureAllowed(PHOTO_CAPTURE_USER_IDS.has(user.id));
 
     // Sportgeräte laden
     const {
@@ -672,6 +683,31 @@ const totalScore = useMemo(
   setShowResultDetails(false);
 
 }
+
+function addPhotoShots(photoShots: PhotoDetectedShot[]) {
+  setShots((current) => {
+    const availableShots =
+      shotMode === "fixed"
+        ? Math.max(0, plannedShots - current.length)
+        : photoShots.length;
+
+    return [
+      ...current,
+      ...photoShots.slice(0, availableShots).map((shot) => ({
+        score: shot.score,
+        x: shot.x,
+        y: shot.y,
+      })),
+    ];
+  });
+
+  setSelectedX(null);
+  setSelectedY(null);
+  setSelectedScore(null);
+  setShowPhotoCapture(false);
+  setShowResultDetails(false);
+}
+
 function handleTargetClick(
   event: React.MouseEvent<HTMLDivElement>
 ) {
@@ -1522,6 +1558,25 @@ router.push("/results");
   <div
 
 >
+
+{photoCaptureAllowed && targetType === "crossbow30m" && !isTrainingMode && (
+  <div className="mb-5">
+    {!showPhotoCapture ? (
+      <button
+        type="button"
+        onClick={() => setShowPhotoCapture(true)}
+        className="w-full rounded-lg border border-blue-300 bg-blue-50 px-4 py-3 font-semibold text-blue-700 hover:bg-blue-100"
+      >
+        📷 Treffer aus Foto erfassen
+      </button>
+    ) : (
+      <PhotoTargetCapture
+        onImport={addPhotoShots}
+        onClose={() => setShowPhotoCapture(false)}
+      />
+    )}
+  </div>
+)}
 
    
 <Target

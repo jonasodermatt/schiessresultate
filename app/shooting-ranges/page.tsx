@@ -31,6 +31,10 @@ export default function ShootingRangesPage() {
     ShootingRange[]
   >([]);
 
+const [shootingRangeUsage, setShootingRangeUsage] = useState<
+  Record<string, number>
+>({});
+
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState("");
@@ -73,7 +77,7 @@ export default function ShootingRangesPage() {
   active
 `)
 .eq("active", true)
-      .order("name", { ascending: false });
+      .order("name", { ascending: true });
 
     if (error) {
       setMessage(`Fehler beim Laden: ${error.message}`);
@@ -95,6 +99,37 @@ if (favoriteError) {
       (favorite) => favorite.shooting_range_id
     )
   );
+  const ninetyDaysAgo = new Date();
+ninetyDaysAgo.setDate(ninetyDaysAgo.getDate() - 90);
+
+const {
+  data: resultUsageData,
+  error: resultUsageError,
+} = await supabase
+  .from("results")
+  .select("shooting_range_id")
+  .not("shooting_range_id", "is", null)
+  .gte("date", ninetyDaysAgo.toISOString());
+
+if (resultUsageError) {
+  console.error(
+    "Beliebte Schiessstände konnten nicht geladen werden:",
+    resultUsageError.message
+  );
+} else {
+  const usage: Record<string, number> = {};
+
+  for (const result of resultUsageData ?? []) {
+    if (!result.shooting_range_id) {
+      continue;
+    }
+
+    usage[result.shooting_range_id] =
+      (usage[result.shooting_range_id] ?? 0) + 1;
+  }
+
+  setShootingRangeUsage(usage);
+}
 }
     }
 
@@ -200,30 +235,35 @@ function startEdit(item: ShootingRange) {
   useEffect(() => {
     loadShootingRanges();
   }, [loadShootingRanges]);
-  const filteredShootingRanges = shootingRanges.filter((item) => {
-  const search = searchTerm.trim().toLowerCase();
+ const search = searchTerm.trim().toLowerCase();
 
-  if (!search) {
-    return true;
-  }
+const searchedShootingRanges = search
+  ? shootingRanges.filter((item) => {
+      return (
+        item.name.toLowerCase().includes(search) ||
+        (item.city ?? "").toLowerCase().includes(search) ||
+        (item.postal_code ?? "").toLowerCase().includes(search) ||
+        (item.address ?? "").toLowerCase().includes(search)
+      );
+    })
+  : [];
 
-  return (
-    item.name.toLowerCase().includes(search) ||
-    (item.city ?? "").toLowerCase().includes(search) ||
-    (item.postal_code ?? "").toLowerCase().includes(search) ||
-    (item.address ?? "").toLowerCase().includes(search)
-  );
-});
+const favoriteShootingRanges = shootingRanges
+  .filter((item) => favoriteIds.includes(item.id))
+  .sort((a, b) => a.name.localeCompare(b.name));
 
-const favoriteShootingRanges =
-  filteredShootingRanges.filter((item) =>
-    favoriteIds.includes(item.id)
-  );
-
-const otherShootingRanges =
-  filteredShootingRanges.filter(
-    (item) => !favoriteIds.includes(item.id)
-  );
+const popularShootingRanges = shootingRanges
+  .filter(
+    (item) =>
+      !favoriteIds.includes(item.id) &&
+      (shootingRangeUsage[item.id] ?? 0) > 0
+  )
+  .sort(
+    (a, b) =>
+      (shootingRangeUsage[b.id] ?? 0) -
+      (shootingRangeUsage[a.id] ?? 0)
+  )
+  .slice(0, 5);
 const possibleDuplicates = shootingRanges.filter((item) => {
   if (editingId === item.id) {
     return false;
@@ -525,41 +565,72 @@ function renderShootingRange(item: ShootingRange) {
 </p>
               </div>
             ) : (
-              <div className="space-y-4">
-               <div>
-  {favoriteShootingRanges.length > 0 && (
-    <div className="mb-8">
+         <div className="space-y-8">
+  {search ? (
+    <div>
       <h3 className="mb-3 text-lg font-semibold text-slate-900">
-        ★ Meine Favoriten
+        Suchresultate
       </h3>
 
-      <div className="space-y-4">
-        {favoriteShootingRanges.map((item) =>
-          renderShootingRange(item)
-        )}
-      </div>
+      {searchedShootingRanges.length > 0 ? (
+        <div className="space-y-4">
+          {searchedShootingRanges.map((item) =>
+            renderShootingRange(item)
+          )}
+        </div>
+      ) : (
+        <div className="rounded-xl border border-dashed bg-white p-6 text-center">
+          <p className="text-sm text-slate-500">
+            Keine Schiessstände gefunden.
+          </p>
+        </div>
+      )}
     </div>
-   
-  )}
- 
-  <div>
-    <h3 className="mb-3 text-lg font-semibold text-slate-900">
-      Alle Schiessstände
-    </h3>
+  ) : (
+    <>
+      {favoriteShootingRanges.length > 0 && (
+        <div>
+          <h3 className="mb-3 text-lg font-semibold text-slate-900">
+            ★ Meine Favoriten
+          </h3>
 
-    {otherShootingRanges.length > 0 ? (
-      <div className="space-y-4">
-        {otherShootingRanges.map((item) =>
-          renderShootingRange(item)
+          <div className="space-y-4">
+            {favoriteShootingRanges.map((item) =>
+              renderShootingRange(item)
+            )}
+          </div>
+        </div>
+      )}
+
+      <div>
+        <div className="mb-3">
+          <h3 className="text-lg font-semibold text-slate-900">
+            🔥 Derzeit beliebte Schiessstände
+          </h3>
+
+          <p className="mt-1 text-sm text-slate-500">
+            Häufig verwendete Schiessstände der letzten 90 Tage
+          </p>
+        </div>
+
+        {popularShootingRanges.length > 0 ? (
+          <div className="space-y-4">
+            {popularShootingRanges.map((item) =>
+              renderShootingRange(item)
+            )}
+          </div>
+        ) : (
+          <div className="rounded-xl border border-dashed bg-white p-6 text-center">
+            <p className="text-sm text-slate-500">
+              Noch keine häufig verwendeten Schiessstände vorhanden.
+            </p>
+          </div>
         )}
       </div>
-    ) : (
-      <p className="text-sm text-slate-500">
-        Keine weiteren Schiessstände gefunden.
-      </p>
-    )}
-  </div>
-</div>
+    </>
+  )}
+
+
 </div>
             )}
           </section>
