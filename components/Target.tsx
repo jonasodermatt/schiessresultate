@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 
 type TargetShot = {
   id: string;
@@ -94,6 +94,27 @@ export const RIFLE_300M_TARGET: CrossbowTargetDefinition = {
   // über projectileDiameterMm kann 7.5 oder bis 8.0 mm übergeben werden.
   projectileDiameterMm: 5.6,
 };
+
+function getTargetDefinition(
+  targetType: TargetType,
+  projectileDiameterMm?: number
+): CrossbowTargetDefinition | null {
+  if (targetType === "crossbow10m") return CROSSBOW_10M_TARGET;
+  if (targetType === "crossbow30m") return CROSSBOW_30M_TARGET;
+  if (targetType === "rifle10m") return RIFLE_10M_TARGET;
+  if (targetType === "rifle50m") return RIFLE_50M_TARGET;
+
+  if (targetType === "rifle300m") {
+    return {
+      ...RIFLE_300M_TARGET,
+      projectileDiameterMm:
+        projectileDiameterMm ??
+        RIFLE_300M_TARGET.projectileDiameterMm,
+    };
+  }
+
+  return null;
+}
 
 function scoreDefaultTarget(
   x: number,
@@ -295,15 +316,7 @@ function getZoomScale(
 
   if (targetType !== "default") {
     const definition =
-      targetType === "crossbow10m"
-        ? CROSSBOW_10M_TARGET
-        : targetType === "crossbow30m"
-          ? CROSSBOW_30M_TARGET
-          : targetType === "rifle10m"
-            ? RIFLE_10M_TARGET
-            : targetType === "rifle50m"
-              ? RIFLE_50M_TARGET
-              : RIFLE_300M_TARGET;
+      getTargetDefinition(targetType) as CrossbowTargetDefinition;
 
     const tenRadiusMm =
       definition.tenDiameterMm / 2;
@@ -367,6 +380,8 @@ export default function Target({
 }: TargetProps) {
   const [zoomLevel, setZoomLevel] =
     useState(1);
+  const draggingSelectedShotRef =
+    useRef(false);
 
   const viewportSize = 300;
   const zoomScale = getZoomScale(
@@ -380,26 +395,31 @@ export default function Target({
     );
   }
 
-  function handleTargetClick(
-    event: React.MouseEvent<HTMLDivElement>
+  function selectAtClientPosition(
+    clientX: number,
+    clientY: number,
+    targetElement: HTMLDivElement
   ) {
-    if (readOnly) {
-      return;
-    }
-
     const rect =
-      event.currentTarget.getBoundingClientRect();
+      targetElement.getBoundingClientRect();
 
-    const mouseX =
-      event.clientX - rect.left;
-    const mouseY =
-      event.clientY - rect.top;
+    const x = Math.max(
+      -1,
+      Math.min(
+        1,
+        ((clientX - rect.left) / rect.width) * 2 - 1
+      )
+    );
 
-    const x =
-      (mouseX / rect.width) * 2 - 1;
-
-    const y =
-      -((mouseY / rect.height) * 2 - 1);
+    const y = Math.max(
+      -1,
+      Math.min(
+        1,
+        -(
+          ((clientY - rect.top) / rect.height) * 2 - 1
+        )
+      )
+    );
 
     const score = getScore(
       targetType,
@@ -413,6 +433,80 @@ export default function Target({
       Number(y.toFixed(4)),
       score
     );
+  }
+
+  function handleTargetClick(
+    event: React.MouseEvent<HTMLDivElement>
+  ) {
+    if (readOnly) {
+      return;
+    }
+
+    selectAtClientPosition(
+      event.clientX,
+      event.clientY,
+      event.currentTarget
+    );
+  }
+
+  function handleSelectedShotPointerDown(
+    event: React.PointerEvent<HTMLDivElement>
+  ) {
+    if (readOnly) {
+      return;
+    }
+
+    event.preventDefault();
+    event.stopPropagation();
+    draggingSelectedShotRef.current = true;
+    event.currentTarget.setPointerCapture(
+      event.pointerId
+    );
+  }
+
+  function handleSelectedShotPointerMove(
+    event: React.PointerEvent<HTMLDivElement>
+  ) {
+    if (
+      readOnly ||
+      !draggingSelectedShotRef.current
+    ) {
+      return;
+    }
+
+    event.preventDefault();
+    event.stopPropagation();
+
+    const targetElement =
+      event.currentTarget.parentElement;
+
+    if (!(targetElement instanceof HTMLDivElement)) {
+      return;
+    }
+
+    selectAtClientPosition(
+      event.clientX,
+      event.clientY,
+      targetElement
+    );
+  }
+
+  function handleSelectedShotPointerEnd(
+    event: React.PointerEvent<HTMLDivElement>
+  ) {
+    event.preventDefault();
+    event.stopPropagation();
+    draggingSelectedShotRef.current = false;
+
+    if (
+      event.currentTarget.hasPointerCapture(
+        event.pointerId
+      )
+    ) {
+      event.currentTarget.releasePointerCapture(
+        event.pointerId
+      );
+    }
   }
 
   function renderDefaultTarget() {
@@ -678,7 +772,38 @@ export default function Target({
     );
   }
 
-  const markerScale = 1 / zoomScale;
+  const targetDefinition =
+    getTargetDefinition(
+      targetType,
+      projectileDiameterMm
+    );
+
+  // Der Trefferkreis entspricht dem realen Pfeil- bzw.
+  // Geschossdurchmesser im Massstab der gesamten Scheibe.
+  // Da er innerhalb der gezoomten Scheibe liegt, skaliert er
+  // automatisch proportional mit jeder Zoomstufe.
+  const projectileMarkerSizePx =
+    targetDefinition
+      ? (
+          targetDefinition.projectileDiameterMm /
+          targetDefinition.targetSizeMm
+        ) * viewportSize
+      : 24;
+
+  const projectileMarkerBorderPx =
+    targetDefinition
+      ? Math.max(0.35, projectileMarkerSizePx * 0.08)
+      : 2;
+
+  const projectileMarkerFontSizePx =
+    targetDefinition
+      ? Math.max(1, projectileMarkerSizePx * 0.45)
+      : 11;
+
+  const selectedShotHitSizePx = Math.max(
+    projectileMarkerSizePx,
+    44 / zoomScale
+  );
 
   return (
     <div>
@@ -787,16 +912,16 @@ export default function Target({
                       2) *
                     100
                   }%`,
-                  width: "24px",
-                  height: "24px",
-                  transform:
-                    `translate(-50%, -50%) scale(${markerScale})`,
+                  width: `${projectileMarkerSizePx}px`,
+                  height: `${projectileMarkerSizePx}px`,
+                  transform: "translate(-50%, -50%)",
                   transformOrigin: "center",
+                  boxSizing: "border-box",
                   borderRadius: "50%",
                   backgroundColor: "#dc2626",
-                  border: "2px solid white",
+                  border: `${projectileMarkerBorderPx}px solid white`,
                   color: "white",
-                  fontSize: "11px",
+                  fontSize: `${projectileMarkerFontSizePx}px`,
                   fontWeight: "bold",
                   display: "flex",
                   alignItems: "center",
@@ -813,6 +938,21 @@ export default function Target({
             selectedY !== null &&
             selectedScore !== null && (
               <div
+                onClick={(event) =>
+                  event.stopPropagation()
+                }
+                onPointerDown={
+                  handleSelectedShotPointerDown
+                }
+                onPointerMove={
+                  handleSelectedShotPointerMove
+                }
+                onPointerUp={
+                  handleSelectedShotPointerEnd
+                }
+                onPointerCancel={
+                  handleSelectedShotPointerEnd
+                }
                 style={{
                   position: "absolute",
                   left: `${
@@ -823,25 +963,43 @@ export default function Target({
                     ((1 - selectedY) / 2) *
                     100
                   }%`,
-                  width: "28px",
-                  height: "28px",
-                  transform:
-                    `translate(-50%, -50%) scale(${markerScale})`,
+                  width: `${selectedShotHitSizePx}px`,
+                  height: `${selectedShotHitSizePx}px`,
+                  transform: "translate(-50%, -50%)",
                   transformOrigin: "center",
                   borderRadius: "50%",
-                  border: "2px solid white",
-                  backgroundColor: "#dc2626",
-                  color: "white",
-                  fontWeight: "bold",
-                  fontSize: "12px",
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",
                   zIndex: 20,
-                  pointerEvents: "none",
+                  pointerEvents: readOnly
+                    ? "none"
+                    : "auto",
+                  touchAction: "none",
+                  cursor: readOnly
+                    ? "default"
+                    : "grab",
                 }}
               >
-                {selectedScore}
+                <div
+                  style={{
+                    width: `${projectileMarkerSizePx}px`,
+                    height: `${projectileMarkerSizePx}px`,
+                    boxSizing: "border-box",
+                    borderRadius: "50%",
+                    border: `${projectileMarkerBorderPx}px solid white`,
+                    backgroundColor: "#dc2626",
+                    color: "white",
+                    fontWeight: "bold",
+                    fontSize: `${projectileMarkerFontSizePx}px`,
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    pointerEvents: "none",
+                  }}
+                >
+                  {selectedScore}
+                </div>
               </div>
             )}
         </div>

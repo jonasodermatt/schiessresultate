@@ -111,11 +111,14 @@ const [favoriteShootingRangeIds, setFavoriteShootingRangeIds] =
   shots.length >= plannedShots;
 
 const showResultActions =
-  inputType === "individual" &&
-  shots.length > 0 &&
+  inputType === "total" ||
   (
-    shotMode === "free" ||
-    resultComplete
+    inputType === "individual" &&
+    shots.length > 0 &&
+    (
+      shotMode === "free" ||
+      resultComplete
+    )
   );
 
   function handleShotModeChange(
@@ -621,6 +624,24 @@ const totalScore = useMemo(
 
   const averageScore =
     shots.length > 0 ? totalScore / shots.length : 0;
+
+  const totalOnlyScoreValue =
+    totalOnlyScore.trim() !== "" && Number.isFinite(Number(totalOnlyScore))
+      ? Number(totalOnlyScore)
+      : 0;
+
+  const displayedShotCount =
+    inputType === "total" ? totalOnlyShots : shots.length;
+
+  const displayedTotalScore =
+    inputType === "total" ? totalOnlyScoreValue : totalScore;
+
+  const displayedAverageScore =
+    inputType === "total"
+      ? displayedShotCount > 0
+        ? displayedTotalScore / displayedShotCount
+        : 0
+      : averageScore;
 
   function addShot(
   score: number,
@@ -1727,6 +1748,40 @@ selectedScore !== null ? (
                   className="w-full rounded-lg border border-slate-300 bg-white px-4 py-3 text-slate-900"
                 />
               </div>
+
+              {showResultActions && (
+                <div className="sm:col-span-2 mt-1 rounded-xl border border-green-200 bg-green-50 p-5">
+                  <p className="text-lg font-bold text-slate-900">
+                    ✓ Resultat speichern
+                  </p>
+
+                  <p className="mt-1 text-sm text-slate-600">
+                    Anzahl Schüsse und Total werden als Gesamtresultat gespeichert.
+                  </p>
+
+                  <div className="mt-5 flex flex-col gap-3 sm:flex-row">
+                    <button
+                      type="button"
+                      onClick={() => saveResult(false)}
+                      disabled={saving}
+                      className="rounded-lg bg-red-600 px-4 py-3 text-sm font-semibold text-white hover:bg-red-700 disabled:opacity-50"
+                    >
+                      {saving ? "Wird gespeichert..." : "Resultat speichern"}
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => saveResult(true)}
+                      disabled={saving}
+                      className="rounded-lg border border-red-600 bg-white px-4 py-3 text-sm font-semibold text-red-600 hover:bg-red-50 disabled:opacity-50"
+                    >
+                      {saving
+                        ? "Wird gespeichert..."
+                        : "Speichern & nächstes Resultat"}
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
           )}
 
@@ -1752,7 +1807,7 @@ selectedScore !== null ? (
         Schüsse
       </p>
       <p className="text-2xl font-bold text-slate-900">
-        {shots.length}
+        {displayedShotCount}
       </p>
     </div>
 
@@ -1761,7 +1816,7 @@ selectedScore !== null ? (
         Total
       </p>
       <p className="text-2xl font-bold text-slate-900">
-        {totalScore}
+        {displayedTotalScore}
       </p>
     </div>
 
@@ -1770,7 +1825,7 @@ selectedScore !== null ? (
         Durchschnitt
       </p>
       <p className="text-2xl font-bold text-slate-900">
-        {averageScore.toFixed(2)}
+        {displayedAverageScore.toFixed(2)}
       </p>
     </div>
    </div>
