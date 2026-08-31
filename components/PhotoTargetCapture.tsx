@@ -414,34 +414,71 @@ export default function PhotoTargetCapture({
       if (!best) {
         setAnalyzing(false);
         setAnalysisMessage(
-          "Der 1er-Ring wurde nicht sicher erkannt. Bitte Mitte und Rand manuell setzen."
+          "Der schwarze 3er-Rand wurde nicht sicher erkannt. Bitte Mitte und Rand manuell setzen."
         );
         return;
       }
 
-      // Die Begrenzungsbox der zusammengeführten schwarzen
-      // Scheibenfläche war mit den Referenzfotos stabiler als
-      // eine gewichtete Schwerpunkt- oder Quantilschätzung.
-      const initialCenterX = (best.minX + best.maxX) / 2;
-      const initialCenterY = (best.minY + best.maxY) / 2;
-      const initialRadiusX = Math.max(
-        1,
-        (best.maxX - best.minX) / 2 + densityRadius * 0.5
-      );
-      const initialRadiusY = Math.max(
-        1,
-        (best.maxY - best.minY) / 2 + densityRadius * 0.5
-      );
+      type EllipseFit = {
+        centerX: number;
+        centerY: number;
+        radiusX: number;
+        radiusY: number;
+        angle: number;
+      };
 
-      // Der Schwarz-Weiss-Übergang am Rand des schwarzen
-      // Scheibenteils wird auf vielen Strahlen gemessen. Die
-      // Messungen korrigieren nur die Radien; der stabilere
-      // Mittelpunkt der zusammenhängenden Schwarzfläche bleibt.
-      const circumferenceMeasurements: Array<{
-        scale: number;
-        directionX: number;
-        directionY: number;
-      }> = [];
+      const ellipseFromMoments = (
+        area: number,
+        sumX: number,
+        sumY: number,
+        sumXX: number,
+        sumYY: number,
+        sumXY: number,
+        boundaryPoints: boolean
+      ): EllipseFit => {
+        const centerX = sumX / area;
+        const centerY = sumY / area;
+        const covarianceXX = sumXX / area - centerX * centerX;
+        const covarianceYY = sumYY / area - centerY * centerY;
+        const covarianceXY = sumXY / area - centerX * centerY;
+        const trace = covarianceXX + covarianceYY;
+        const difference = covarianceXX - covarianceYY;
+        const discriminant = Math.sqrt(
+          Math.max(0, difference * difference + 4 * covarianceXY * covarianceXY)
+        );
+        const majorVariance = Math.max(1, (trace + discriminant) / 2);
+        const minorVariance = Math.max(1, (trace - discriminant) / 2);
+        const varianceToRadius = boundaryPoints ? Math.sqrt(2) : 2;
+
+        return {
+          centerX,
+          centerY,
+          radiusX: Math.sqrt(majorVariance) * varianceToRadius,
+          radiusY: Math.sqrt(minorVariance) * varianceToRadius,
+          angle: 0.5 * Math.atan2(2 * covarianceXY, difference),
+        };
+      };
+
+      // Erste robuste Näherung nur aus der zusammenhängenden schwarzen
+      // 90-mm-Fläche. Für eine gefüllte Ellipse entsprechen die Radien dem
+      // Doppelten der Standardabweichung entlang ihrer Hauptachsen.
+      const initialEllipse = ellipseFromMoments(
+        best.area,
+        best.sumX,
+        best.sumY,
+        best.sumXX,
+        best.sumYY,
+        best.sumXY,
+        false
+      );
+      initialEllipse.radiusX += densityRadius * 0.65;
+      initialEllipse.radiusY += densityRadius * 0.65;
+
+      // Den tatsächlichen Übergang weisser 2er -> schwarzer 3er auf vielen
+      // elliptischen Strahlen messen. Innere Ringlinien und der äussere
+      // Blattrand liegen ausserhalb des engen Suchfensters und können die
+      // Anpassung deshalb nicht übernehmen.
+      const boundaryPoints: Array<{ x: number; y: number }> = [];
       const sampleLuminance = (x: number, y: number) => {
         const roundedX = Math.max(0, Math.min(width - 1, Math.round(x)));
         const roundedY = Math.max(0, Math.min(height - 1, Math.round(y)));
@@ -453,26 +490,29 @@ export default function PhotoTargetCapture({
         );
       };
 
-      for (let index = 0; index < 48; index++) {
-        const angle = (index / 48) * Math.PI * 2;
-        const directionX = Math.cos(angle);
-        const directionY = Math.sin(angle);
+      for (let index = 0; index < 96; index++) {
+        const parameter = (index / 96) * Math.PI * 2;
+        const localX = initialEllipse.radiusX * Math.cos(parameter);
+        const localY = initialEllipse.radiusY * Math.sin(parameter);
+        const directionX =
+          Math.cos(initialEllipse.angle) * localX -
+          Math.sin(initialEllipse.angle) * localY;
+        const directionY =
+          Math.sin(initialEllipse.angle) * localX +
+          Math.cos(initialEllipse.angle) * localY;
         let strongestContrast = 0;
         let strongestScale = 1;
 
-        // Die Begrenzungsbox liefert bereits eine gute Näherung
-        // des schwarzen 3er-Kreises. Nur nahe an diesem Rand
-        // suchen, damit innere weisse Ringlinien nicht gewinnen.
-        for (let scale = 0.9; scale <= 1.1; scale += 0.005) {
-          const innerScale = scale - 0.025;
-          const outerScale = scale + 0.025;
+        for (let scale = 0.82; scale <= 1.18; scale += 0.004) {
+          const innerScale = scale - 0.018;
+          const outerScale = scale + 0.018;
           const innerLuminance = sampleLuminance(
-            initialCenterX + initialRadiusX * directionX * innerScale,
-            initialCenterY + initialRadiusY * directionY * innerScale
+            initialEllipse.centerX + directionX * innerScale,
+            initialEllipse.centerY + directionY * innerScale
           );
           const outerLuminance = sampleLuminance(
-            initialCenterX + initialRadiusX * directionX * outerScale,
-            initialCenterY + initialRadiusY * directionY * outerScale
+            initialEllipse.centerX + directionX * outerScale,
+            initialEllipse.centerY + directionY * outerScale
           );
           const contrast = outerLuminance - innerLuminance;
 
@@ -482,48 +522,59 @@ export default function PhotoTargetCapture({
           }
         }
 
-        if (strongestContrast >= 18) {
-          circumferenceMeasurements.push({
-            scale: strongestScale,
-            directionX,
-            directionY,
+        if (strongestContrast >= 20) {
+          boundaryPoints.push({
+            x: initialEllipse.centerX + directionX * strongestScale,
+            y: initialEllipse.centerY + directionY * strongestScale,
           });
         }
       }
 
-      const blackCenterX = initialCenterX;
-      const blackCenterY = initialCenterY;
-      let blackRadiusX = initialRadiusX;
-      let blackRadiusY = initialRadiusY;
-      const ellipseAngle = 0;
-
-      const median = (values: number[]) => {
-        if (values.length === 0) return 1;
-        const sorted = [...values].sort((a, b) => a - b);
-        const middle = Math.floor(sorted.length / 2);
-        return sorted.length % 2 === 0
-          ? (sorted[middle - 1] + sorted[middle]) / 2
-          : sorted[middle];
-      };
-
-      if (circumferenceMeasurements.length >= 24) {
-        const horizontalScales = circumferenceMeasurements
-          .filter((measurement) => Math.abs(measurement.directionX) >= 0.65)
-          .map((measurement) => measurement.scale);
-        const verticalScales = circumferenceMeasurements
-          .filter((measurement) => Math.abs(measurement.directionY) >= 0.65)
-          .map((measurement) => measurement.scale);
-
-        if (horizontalScales.length >= 8) {
-          blackRadiusX = initialRadiusX * median(horizontalScales);
-        }
-        if (verticalScales.length >= 8) {
-          blackRadiusY = initialRadiusY * median(verticalScales);
-        }
+      let fittedEllipse = initialEllipse;
+      if (boundaryPoints.length >= 58) {
+        fittedEllipse = ellipseFromMoments(
+          boundaryPoints.length,
+          boundaryPoints.reduce((sum, point) => sum + point.x, 0),
+          boundaryPoints.reduce((sum, point) => sum + point.y, 0),
+          boundaryPoints.reduce((sum, point) => sum + point.x * point.x, 0),
+          boundaryPoints.reduce((sum, point) => sum + point.y * point.y, 0),
+          boundaryPoints.reduce((sum, point) => sum + point.x * point.y, 0),
+          true
+        );
       }
+
+      const blackCenterX = fittedEllipse.centerX;
+      const blackCenterY = fittedEllipse.centerY;
+      const blackRadiusX = fittedEllipse.radiusX;
+      const blackRadiusY = fittedEllipse.radiusY;
+      const ellipseAngle = fittedEllipse.angle;
 
       const scoringRadiusX = blackRadiusX * (114 / 90);
       const scoringRadiusY = blackRadiusY * (114 / 90);
+      const fittedAxisRatio =
+        Math.min(blackRadiusX, blackRadiusY) /
+        Math.max(blackRadiusX, blackRadiusY);
+      const scoringExtentX = Math.sqrt(
+        (scoringRadiusX * Math.cos(ellipseAngle)) ** 2 +
+          (scoringRadiusY * Math.sin(ellipseAngle)) ** 2
+      );
+      const scoringExtentY = Math.sqrt(
+        (scoringRadiusX * Math.sin(ellipseAngle)) ** 2 +
+          (scoringRadiusY * Math.cos(ellipseAngle)) ** 2
+      );
+      const scoringEllipseFitsImage =
+        blackCenterX - scoringExtentX >= -width * 0.02 &&
+        blackCenterX + scoringExtentX <= width * 1.02 &&
+        blackCenterY - scoringExtentY >= -height * 0.02 &&
+        blackCenterY + scoringExtentY <= height * 1.02;
+
+      if (fittedAxisRatio < 0.42 || !scoringEllipseFitsImage) {
+        setAnalyzing(false);
+        setAnalysisMessage(
+          "Der schwarze 3er-Rand ist nicht vollständig und sicher im Foto. Bitte Mitte und 1er-Rand manuell setzen."
+        );
+        return;
+      }
       const nextCenter = {
         x: blackCenterX / width,
         y: blackCenterY / height,
