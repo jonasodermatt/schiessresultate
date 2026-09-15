@@ -10,6 +10,7 @@ import {
   CROSSBOW_30M_TARGET,
   scoreCrossbow30m,
 } from "@/components/Target";
+import { supabase } from "@/lib/supabase";
 
 export type PhotoDetectedShot = {
   score: number;
@@ -42,6 +43,7 @@ export default function PhotoTargetCapture({
   const draggingMarkerIdRef = useRef<string | null>(null);
 
   const [photoUrl, setPhotoUrl] = useState("");
+  const [photoFile, setPhotoFile] = useState<File | null>(null);
   const [center, setCenter] = useState<ImagePoint | null>(null);
   const [radius, setRadius] = useState<number | null>(null);
   const [radiusY, setRadiusY] = useState<number | null>(null);
@@ -53,6 +55,16 @@ export default function PhotoTargetCapture({
   const [markers, setMarkers] = useState<PhotoMarker[]>([]);
   const [analyzing, setAnalyzing] = useState(false);
   const [analysisMessage, setAnalysisMessage] = useState("");
+  const [feedbackOpen, setFeedbackOpen] = useState(false);
+  const [feedbackType, setFeedbackType] = useState<
+    | "target_not_detected"
+    | "no_shots_detected"
+    | "missing_shots"
+    | "false_shots"
+    | ""
+  >("");
+  const [feedbackSending, setFeedbackSending] = useState(false);
+  const [feedbackMessage, setFeedbackMessage] = useState("");
 
   useEffect(() => {
     return () => {
@@ -66,6 +78,7 @@ export default function PhotoTargetCapture({
     if (photoUrl) URL.revokeObjectURL(photoUrl);
 
     setPhotoUrl(URL.createObjectURL(file));
+    setPhotoFile(file);
     setCenter(null);
     setRadius(null);
     setRadiusY(null);
@@ -74,6 +87,9 @@ export default function PhotoTargetCapture({
     setMarkers([]);
     setAnalyzing(false);
     setAnalysisMessage("");
+    setFeedbackOpen(false);
+    setFeedbackType("");
+    setFeedbackMessage("");
     setCalibrationStep("center");
   }
 
@@ -589,411 +605,258 @@ export default function PhotoTargetCapture({
             (CROSSBOW_30M_TARGET.blackDiameterMm / 2))
       );
 
-      const candidateMask = new Uint8Array(width * height);
+      // Treffererkennung bewusst farbunabhängig:
+      // 1. Graustufenbild
+      // 2. lokale Helligkeitsnormalisierung
+      // 3. kreisförmige Kanten in der bekannten 6-mm-Grösse suchen
+      // 4. Ringlinien über die Winkelverteilung der Kanten unterdrücken
+      //
+      // Dadurch ist es egal, ob hinter einem Loch schwarzes, weisses,
+      // braunes oder andersfarbiges Material sichtbar wird.
+      const gray = new Float32Array(width * height);
+      const grayIntegral = new Float64Array((width + 1) * (height + 1));
+
       for (let y = 0; y < height; y++) {
+        let rowSum = 0;
         for (let x = 0; x < width; x++) {
-          const dx = x - blackCenterX;
-          const dy = y - blackCenterY;
+          const pixelIndex = y * width + x;
+          const offset = pixelIndex * 4;
+          const luminance =
+            pixels[offset] * 0.299 +
+            pixels[offset + 1] * 0.587 +
+            pixels[offset + 2] * 0.114;
+          gray[pixelIndex] = luminance;
+          rowSum += luminance;
+          grayIntegral[(y + 1) * (width + 1) + (x + 1)] =
+            grayIntegral[y * (width + 1) + (x + 1)] + rowSum;
+        }
+      }
+
+      const localMean = (
+        x: number,
+        y: number,
+        radiusValue: number
+      ) => {
+        const r = Math.max(1, Math.round(radiusValue));
+        const fromX = Math.max(0, Math.floor(x) - r);
+        const toX = Math.min(width, Math.floor(x) + r + 1);
+        const fromY = Math.max(0, Math.floor(y) - r);
+        const toY = Math.min(height, Math.floor(y) + r + 1);
+        const integralStride = width + 1;
+        const sum =
+          grayIntegral[toY * integralStride + toX] -
+          grayIntegral[fromY * integralStride + toX] -
+          grayIntegral[toY * integralStride + fromX] +
+          grayIntegral[fromY * integralStride + fromX];
+        return sum / Math.max(1, (toX - fromX) * (toY - fromY));
+      };
+
+      const sampleGray = (x: number, y: number) => {
+        const clampedX = Math.max(0, Math.min(width - 1, x));
+        const clampedY = Math.max(0, Math.min(height - 1, y));
+        const x0 = Math.floor(clampedX);
+        const y0 = Math.floor(clampedY);
+        const x1 = Math.min(width - 1, x0 + 1);
+        const y1 = Math.min(height - 1, y0 + 1);
+        const fx = clampedX - x0;
+        const fy = clampedY - y0;
+        const top =
+          gray[y0 * width + x0] * (1 - fx) +
+          gray[y0 * width + x1] * fx;
+        const bottom =
+          gray[y1 * width + x0] * (1 - fx) +
+          gray[y1 * width + x1] * fx;
+        return top * (1 - fy) + bottom * fy;
+      };
+
+      type ShotCandidate = {
+        x: number;
+        y: number;
+        area: number;
+      };
+
+      const candidates: ShotCandidate[] = [];
+      const holeRadius = expectedHoleDiameter / 2;
+      const scanStep = Math.max(2, Math.round(expectedHoleDiameter / 5));
+      const angularSamples = 32;
+      const localWindowRadius = expectedHoleDiameter * 1.6;
+
+      // Wir suchen nicht nach einer bestimmten Lochfarbe, sondern nach einer
+      // kompakten Struktur mit einer annähernd geschlossenen Kante im Abstand
+      // eines 6-mm-Bolzenradius. Die lokale Mittelhelligkeit kompensiert
+      // Schatten und ungleichmässige Beleuchtung.
+      for (
+        let y = Math.max(2, Math.floor(blackCenterY - scoringRadiusY));
+        y <= Math.min(height - 3, Math.ceil(blackCenterY + scoringRadiusY));
+        y += scanStep
+      ) {
+        for (
+          let x = Math.max(2, Math.floor(blackCenterX - scoringRadiusX));
+          x <= Math.min(width - 3, Math.ceil(blackCenterX + scoringRadiusX));
+          x += scanStep
+        ) {
+          const dxFromCenter = x - blackCenterX;
+          const dyFromCenter = y - blackCenterY;
           const ellipseX =
-            Math.cos(ellipseAngle) * dx + Math.sin(ellipseAngle) * dy;
+            Math.cos(ellipseAngle) * dxFromCenter +
+            Math.sin(ellipseAngle) * dyFromCenter;
           const ellipseY =
-            -Math.sin(ellipseAngle) * dx + Math.cos(ellipseAngle) * dy;
-          const ellipseDistance = Math.sqrt(
+            -Math.sin(ellipseAngle) * dxFromCenter +
+            Math.cos(ellipseAngle) * dyFromCenter;
+          const scoringDistance = Math.sqrt(
             (ellipseX * ellipseX) / (scoringRadiusX * scoringRadiusX) +
             (ellipseY * ellipseY) / (scoringRadiusY * scoringRadiusY)
           );
-          if (ellipseDistance > 1.04) continue;
-
-          const index = y * width + x;
-          const offset = index * 4;
-          const red = pixels[offset];
-          const green = pixels[offset + 1];
-          const blue = pixels[offset + 2];
-          const channelMaximum = Math.max(red, green, blue);
-          const channelMinimum = Math.min(red, green, blue);
-          const relativeColorDifference =
-            channelMaximum > 0
-              ? (channelMaximum - channelMinimum) / channelMaximum
-              : 0;
-          const pixelLuminance = red * 0.299 + green * 0.587 + blue * 0.114;
-          const neighborhoodRadius = expectedHoleDiameter * 0.9;
-          let neighborhoodLuminance = 0;
-          for (let sample = 0; sample < 8; sample++) {
-            const angle = (sample / 8) * Math.PI * 2;
-            neighborhoodLuminance += sampleLuminance(
-              x + Math.cos(angle) * neighborhoodRadius,
-              y + Math.sin(angle) * neighborhoodRadius
-            );
-          }
-          neighborhoodLuminance /= 8;
-          const localLuminanceContrast = Math.abs(
-            pixelLuminance - neighborhoodLuminance
-          );
-          const insideBlackArea = ellipseDistance < 90 / 114;
-          const contrastsWithTarget = insideBlackArea
-            ? localLuminanceContrast >= 22
-            : neighborhoodLuminance - pixelLuminance >= 38;
-          const coloredBackingMaterial =
-            channelMaximum > 42 &&
-            channelMaximum - channelMinimum >= 14 &&
-            relativeColorDifference >= 0.1 &&
-            contrastsWithTarget;
-          // Helle Flächen auf dem schwarzen Spiegel sind nicht eindeutig:
-          // insbesondere die gedruckten Ringziffern sehen wie Ausrisskanten
-          // aus. In diesem zusammenhängenden Flächenpfad deshalb nur sichtbar
-          // gewordenes farbiges Scheibenmaterial akzeptieren. Dabei zählt der
-          // Farbunterschied der Kanäle statt eines bestimmten Brauntons.
-          candidateMask[index] = coloredBackingMaterial ? 1 : 0;
-        }
-      }
-
-      // Ein ausgerissenes Loch besitzt häufig nur einzelne helle
-      // Randstücke. Eine kleine Erweiterung verbindet diese Stücke,
-      // ohne die wesentlich längeren Ringlinien zu gültigen
-      // Treffern zu machen.
-      const expandedCandidateMask = new Uint8Array(width * height);
-      const candidateJoinRadius = Math.max(
-        1,
-        Math.round(expectedHoleDiameter * 0.1)
-      );
-      for (let y = 0; y < height; y++) {
-        for (let x = 0; x < width; x++) {
-          if (!candidateMask[y * width + x]) continue;
-          for (let oy = -candidateJoinRadius; oy <= candidateJoinRadius; oy++) {
-            for (let ox = -candidateJoinRadius; ox <= candidateJoinRadius; ox++) {
-              const nextX = x + ox;
-              const nextY = y + oy;
-              if (
-                nextX >= 0 &&
-                nextY >= 0 &&
-                nextX < width &&
-                nextY < height
-              ) {
-                expandedCandidateMask[nextY * width + nextX] = 1;
-              }
-            }
-          }
-        }
-      }
-
-      const candidateVisited = new Uint8Array(width * height);
-      const candidates: Array<{ x: number; y: number; area: number }> = [];
-
-      for (let start = 0; start < expandedCandidateMask.length; start++) {
-        if (!expandedCandidateMask[start] || candidateVisited[start]) continue;
-        let head = 0;
-        let tail = 0;
-        queue[tail++] = start;
-        candidateVisited[start] = 1;
-        let area = 0;
-        let sumX = 0;
-        let sumY = 0;
-        let minX = width;
-        let minY = height;
-        let maxX = 0;
-        let maxY = 0;
-
-        while (head < tail) {
-          const current = queue[head++];
-          const x = current % width;
-          const y = Math.floor(current / width);
-          area++;
-          sumX += x;
-          sumY += y;
-          minX = Math.min(minX, x);
-          minY = Math.min(minY, y);
-          maxX = Math.max(maxX, x);
-          maxY = Math.max(maxY, y);
-
-          for (let oy = -1; oy <= 1; oy++) {
-            for (let ox = -1; ox <= 1; ox++) {
-              const nx = x + ox;
-              const ny = y + oy;
-              if (nx < 0 || ny < 0 || nx >= width || ny >= height) continue;
-              const next = ny * width + nx;
-              if (expandedCandidateMask[next] && !candidateVisited[next]) {
-                candidateVisited[next] = 1;
-                queue[tail++] = next;
-              }
-            }
-          }
-        }
-
-        const componentWidth = maxX - minX + 1;
-        const componentHeight = maxY - minY + 1;
-        const fillRatio = area / (componentWidth * componentHeight);
-        const componentAspect = componentWidth / componentHeight;
-        const componentCenterX = sumX / area;
-        const componentCenterY = sumY / area;
-        const textureRadius = expectedHoleDiameter * 0.52;
-        let textureSamples = 0;
-        let texturedSamples = 0;
-        for (
-          let textureY = Math.floor(componentCenterY - textureRadius);
-          textureY <= Math.ceil(componentCenterY + textureRadius);
-          textureY++
-        ) {
-          for (
-            let textureX = Math.floor(componentCenterX - textureRadius);
-            textureX <= Math.ceil(componentCenterX + textureRadius);
-            textureX++
-          ) {
-            if (
-              (textureX - componentCenterX) ** 2 +
-                (textureY - componentCenterY) ** 2 >
-              textureRadius * textureRadius
-            ) {
-              continue;
-            }
-            const edgeStrength =
-              Math.abs(
-                sampleLuminance(textureX + 1, textureY) -
-                  sampleLuminance(textureX - 1, textureY)
-              ) +
-              Math.abs(
-                sampleLuminance(textureX, textureY + 1) -
-                  sampleLuminance(textureX, textureY - 1)
-              );
-            textureSamples++;
-            if (edgeStrength >= 30) texturedSamples++;
-          }
-        }
-        const textureRatio =
-          textureSamples > 0 ? texturedSamples / textureSamples : 0;
-        if (
-          area >= Math.max(12, expectedHoleDiameter * expectedHoleDiameter * 0.18) &&
-          componentWidth >= expectedHoleDiameter * 0.65 &&
-          componentHeight >= expectedHoleDiameter * 0.65 &&
-          componentWidth <= expectedHoleDiameter * 1.75 &&
-          componentHeight <= expectedHoleDiameter * 1.75 &&
-          componentAspect >= 0.65 &&
-          componentAspect <= 1.54 &&
-          fillRatio >= 0.25 &&
-          textureRatio >= 0.28
-        ) {
-          candidates.push({
-            x: componentCenterX,
-            y: componentCenterY,
-            area,
-          });
-        }
-      }
-
-      // Farbneutrale Löcher besitzen oft keine verwertbare Materialfarbe,
-      // zeigen aber im Bereich eines Projektilquerschnitts viele kurze,
-      // unregelmässige Abrisskanten. Glatte Flecken sowie gedruckte Ziffern
-      // haben eine deutlich geringere lokale Kantendichte.
-      const textureScanStep = Math.max(
-        2,
-        Math.round(expectedHoleDiameter / 5)
-      );
-      const textureRadius = expectedHoleDiameter * 0.52;
-      for (
-        let y = Math.max(1, Math.floor(blackCenterY - scoringRadiusY));
-        y <= Math.min(height - 2, Math.ceil(blackCenterY + scoringRadiusY));
-        y += textureScanStep
-      ) {
-        for (
-          let x = Math.max(1, Math.floor(blackCenterX - scoringRadiusX));
-          x <= Math.min(width - 2, Math.ceil(blackCenterX + scoringRadiusX));
-          x += textureScanStep
-        ) {
-          const scoringDistance = Math.sqrt(
-            ((x - blackCenterX) ** 2) / (scoringRadiusX * scoringRadiusX) +
-              ((y - blackCenterY) ** 2) / (scoringRadiusY * scoringRadiusY)
-          );
           if (scoringDistance > 1.02) continue;
 
-          let textureSamples = 0;
-          let texturedSamples = 0;
-          let stronglyTexturedSamples = 0;
-          for (
-            let textureY = Math.floor(y - textureRadius);
-            textureY <= Math.ceil(y + textureRadius);
-            textureY++
-          ) {
-            for (
-              let textureX = Math.floor(x - textureRadius);
-              textureX <= Math.ceil(x + textureRadius);
-              textureX++
-            ) {
-              if (
-                (textureX - x) ** 2 + (textureY - y) ** 2 >
-                textureRadius * textureRadius
-              ) {
-                continue;
+          const neighborhoodMean = localMean(x, y, localWindowRadius);
+
+          // Lochkern an mehreren Stellen messen. Er darf hell oder dunkel
+          // sein, sollte aber kompakter sein als gedruckte Ziffern/Ringlinien.
+          const coreOffsets = [
+            [0, 0],
+            [-0.32, 0],
+            [0.32, 0],
+            [0, -0.32],
+            [0, 0.32],
+            [-0.23, -0.23],
+            [0.23, -0.23],
+            [-0.23, 0.23],
+            [0.23, 0.23],
+          ];
+          const coreValues = coreOffsets.map(([ox, oy]) =>
+            sampleGray(x + ox * holeRadius, y + oy * holeRadius)
+          );
+          const coreMean =
+            coreValues.reduce((sum, value) => sum + value, 0) /
+            coreValues.length;
+          const coreDeviation =
+            coreValues.reduce(
+              (sum, value) => sum + Math.abs(value - coreMean),
+              0
+            ) / coreValues.length;
+
+          // Ein echter Durchschuss darf ausgefranst sein. Deshalb ist dieser
+          // Grenzwert absichtlich grosszügig; die Kreisprüfung unten ist der
+          // wichtigere Filter.
+          if (coreDeviation > 55) continue;
+
+          const edgeStrengths: number[] = [];
+          let edgeMatches = 0;
+          let strongEdgeMatches = 0;
+          let totalEdgeStrength = 0;
+          const adaptiveThreshold = Math.max(
+            16,
+            Math.min(38, coreDeviation * 0.75 + 15)
+          );
+
+          for (let sample = 0; sample < angularSamples; sample++) {
+            const angle = (sample / angularSamples) * Math.PI * 2;
+            const cos = Math.cos(angle);
+            const sin = Math.sin(angle);
+
+            const inner = sampleGray(
+              x + cos * holeRadius * 0.58,
+              y + sin * holeRadius * 0.58
+            );
+            const edge = sampleGray(
+              x + cos * holeRadius * 0.98,
+              y + sin * holeRadius * 0.98
+            );
+            const outer = sampleGray(
+              x + cos * holeRadius * 1.35,
+              y + sin * holeRadius * 1.35
+            );
+
+            // Vorzeichen ist absichtlich egal: Loch kann gegenüber dem
+            // Scheibenpapier heller oder dunkler erscheinen.
+            const strength = Math.max(
+              Math.abs(edge - inner),
+              Math.abs(outer - inner),
+              Math.abs(outer - edge)
+            );
+            edgeStrengths.push(strength);
+            totalEdgeStrength += strength;
+            if (strength >= adaptiveThreshold) edgeMatches++;
+            if (strength >= adaptiveThreshold + 18) strongEdgeMatches++;
+          }
+
+          // Kanten müssen über den Kreis verteilt sein. Eine Ringlinie oder
+          // Ziffer trifft meist nur wenige benachbarte Winkel.
+          let occupiedSectors = 0;
+          const sectorCount = 8;
+          const samplesPerSector = angularSamples / sectorCount;
+          for (let sector = 0; sector < sectorCount; sector++) {
+            let sectorMatches = 0;
+            for (let i = 0; i < samplesPerSector; i++) {
+              const sampleIndex = sector * samplesPerSector + i;
+              if (edgeStrengths[sampleIndex] >= adaptiveThreshold) {
+                sectorMatches++;
               }
-              const edgeStrength =
-                Math.abs(
-                  sampleLuminance(textureX + 1, textureY) -
-                    sampleLuminance(textureX - 1, textureY)
-                ) +
-                Math.abs(
-                  sampleLuminance(textureX, textureY + 1) -
-                    sampleLuminance(textureX, textureY - 1)
-                );
-              textureSamples++;
-              if (edgeStrength >= 30) texturedSamples++;
-              if (edgeStrength >= 60) stronglyTexturedSamples++;
+            }
+            if (sectorMatches >= 1) occupiedSectors++;
+          }
+
+          let oppositePairs = 0;
+          for (let sample = 0; sample < angularSamples / 2; sample++) {
+            if (
+              edgeStrengths[sample] >= adaptiveThreshold &&
+              edgeStrengths[sample + angularSamples / 2] >= adaptiveThreshold
+            ) {
+              oppositePairs++;
             }
           }
 
-          const textureRatio = texturedSamples / Math.max(1, textureSamples);
-          const strongTextureRatio =
-            stronglyTexturedSamples / Math.max(1, textureSamples);
-          if (textureRatio >= 0.5 && strongTextureRatio >= 0.35) {
+          // Zusätzlich lokale Abweichung berücksichtigen. Das hilft bei
+          // Löchern mit wenig sichtbarer Kante, ohne eine bestimmte Farbe
+          // vorauszusetzen.
+          const localContrast = Math.abs(coreMean - neighborhoodMean);
+          const averageEdgeStrength = totalEdgeStrength / angularSamples;
+
+          if (
+            edgeMatches >= 11 &&
+            strongEdgeMatches >= 3 &&
+            occupiedSectors >= 6 &&
+            oppositePairs >= 3 &&
+            (averageEdgeStrength >= 20 || localContrast >= 18)
+          ) {
+            const response =
+              edgeMatches * 2 +
+              strongEdgeMatches * 2.5 +
+              occupiedSectors * 3 +
+              oppositePairs * 1.5 +
+              averageEdgeStrength * 0.35 +
+              localContrast * 0.25 -
+              coreDeviation * 0.15;
+
             candidates.push({
               x,
               y,
-              area:
-                (textureRatio + strongTextureRatio) *
-                expectedHoleDiameter *
-                expectedHoleDiameter,
+              area: response,
             });
           }
         }
       }
 
-      // Löcher können je nach Hintergrund heller, dunkler oder farbig wirken.
-      // Deshalb unabhängig von der absoluten Farbe nach einer kompakten
-      // Innenfläche mit einer kreisförmig verteilten Kontrastkante suchen.
-      const radialCandidates: Array<{
-        x: number;
-        y: number;
-        response: number;
-      }> = [];
-      const holeRadius = expectedHoleDiameter / 2;
-      const scanStep = Math.max(2, Math.round(expectedHoleDiameter / 7));
-
-      for (
-        let y = Math.max(0, Math.floor(blackCenterY - scoringRadiusY));
-        y <= Math.min(height - 1, Math.ceil(blackCenterY + scoringRadiusY));
-        y += scanStep
-      ) {
-        for (
-          let x = Math.max(0, Math.floor(blackCenterX - scoringRadiusX));
-          x <= Math.min(width - 1, Math.ceil(blackCenterX + scoringRadiusX));
-          x += scanStep
-        ) {
-          const normalizedDistance = Math.sqrt(
-            ((x - blackCenterX) ** 2) / (scoringRadiusX * scoringRadiusX) +
-              ((y - blackCenterY) ** 2) / (scoringRadiusY * scoringRadiusY)
-          );
-          if (normalizedDistance > 1.02) continue;
-
-          // Der Lochkern soll kompakt sein. Ziffern und Ringlinien erzeugen
-          // dagegen innerhalb dieser Fläche starke Helligkeitssprünge.
-          const coreOffsets = [
-            [0, 0],
-            [-0.42, 0],
-            [-0.21, 0],
-            [0.21, 0],
-            [0.42, 0],
-            [0, -0.42],
-            [0, -0.21],
-            [0, 0.21],
-            [0, 0.42],
-            [-0.3, -0.3],
-            [0.3, -0.3],
-            [-0.3, 0.3],
-            [0.3, 0.3],
-            [-0.42, -0.18],
-            [0.42, -0.18],
-            [-0.42, 0.18],
-            [0.42, 0.18],
-          ];
-          const coreSamples = coreOffsets.map(([offsetX, offsetY]) =>
-            sampleLuminance(
-              x + holeRadius * offsetX,
-              y + holeRadius * offsetY
-            )
-          );
-          const coreLuminance =
-            coreSamples.reduce((sum, value) => sum + value, 0) /
-            coreSamples.length;
-          const coreDeviation =
-            coreSamples.reduce(
-              (sum, value) => sum + Math.abs(value - coreLuminance),
-              0
-            ) / coreSamples.length;
-          if (coreDeviation > 42) continue;
-
-          const edgeMatches: boolean[] = [];
-          let contrastEdgeSamples = 0;
-          let strongEdgeSamples = 0;
-          const minimumEdgeContrast = Math.max(28, coreDeviation * 1.35 + 16);
-          for (let sample = 0; sample < 24; sample++) {
-            const angle = (sample / 24) * Math.PI * 2;
-            const edgeContrast = Math.max(
-              Math.abs(
-                sampleLuminance(
-                  x + Math.cos(angle) * holeRadius * 0.78,
-                  y + Math.sin(angle) * holeRadius * 0.78
-                ) - coreLuminance
-              ),
-              Math.abs(
-                sampleLuminance(
-                  x + Math.cos(angle) * holeRadius,
-                  y + Math.sin(angle) * holeRadius
-                ) - coreLuminance
-              ),
-              Math.abs(
-                sampleLuminance(
-                  x + Math.cos(angle) * holeRadius * 1.18,
-                  y + Math.sin(angle) * holeRadius * 1.18
-                ) - coreLuminance
-              )
-            );
-            const edgeMatchesHole = edgeContrast >= minimumEdgeContrast;
-            edgeMatches.push(edgeMatchesHole);
-            if (edgeMatchesHole) contrastEdgeSamples++;
-            if (edgeContrast >= minimumEdgeContrast + 25) {
-              strongEdgeSamples++;
-            }
-          }
-
-          let oppositeEdgePairs = 0;
-          for (let sample = 0; sample < 12; sample++) {
-            if (edgeMatches[sample] && edgeMatches[sample + 12]) {
-              oppositeEdgePairs++;
-            }
-          }
-
-          const response =
-            contrastEdgeSamples + strongEdgeSamples * 0.5 + oppositeEdgePairs;
-          if (
-            contrastEdgeSamples >= 9 &&
-            strongEdgeSamples >= 4 &&
-            oppositeEdgePairs >= 3
-          ) {
-            radialCandidates.push({ x, y, response });
-          }
-        }
-      }
-
-      // Die kontrastbasierte Rundsuche kann auf einer konzentrischen Scheibe
-      // Ringlinien mit Lochkanten verwechseln. Solche unsicheren Vorschläge
-      // nicht in die Trefferliste übernehmen; erkannte Materialflächen haben
-      // Vorrang und neutrale Löcher können weiterhin manuell ergänzt werden.
-      radialCandidates.length = 0;
-      radialCandidates.sort((a, b) => b.response - a.response);
-      for (const radialCandidate of radialCandidates) {
+      // Lokales Maximum / Non-Maximum-Suppression: Rund um dasselbe Loch
+      // entstehen mehrere nahe Kandidaten. Nur der stärkste bleibt übrig.
+      candidates.sort((a, b) => b.area - a.area);
+      const grayscaleCandidates: ShotCandidate[] = [];
+      for (const candidate of candidates) {
         if (
-          candidates.every(
-            (candidate) =>
-              Math.hypot(
-                candidate.x - radialCandidate.x,
-                candidate.y - radialCandidate.y
-              ) > expectedHoleDiameter * 1.05
+          grayscaleCandidates.every(
+            (existing) =>
+              Math.hypot(existing.x - candidate.x, existing.y - candidate.y) >
+              expectedHoleDiameter * 0.72
           )
         ) {
-          candidates.push({
-            x: radialCandidate.x,
-            y: radialCandidate.y,
-            area: radialCandidate.response * expectedHoleDiameter,
-          });
+          grayscaleCandidates.push(candidate);
         }
+        if (grayscaleCandidates.length >= 30) break;
       }
+
+      candidates.length = 0;
+      candidates.push(...grayscaleCandidates);
 
       candidates.sort((a, b) => b.area - a.area);
       const merged: typeof candidates = [];
@@ -1029,6 +892,138 @@ export default function PhotoTargetCapture({
           : "Der 1er-Ring wurde erkannt. Schusslöcher bitte ergänzen."
       );
     }, 30);
+  }
+
+  async function sendDetectionFeedback() {
+    if (!photoFile || !feedbackType || feedbackSending) return;
+
+    setFeedbackSending(true);
+    setFeedbackMessage("");
+
+    let uploadedPath: string | null = null;
+
+    try {
+      const {
+        data: { user },
+        error: userError,
+      } = await supabase.auth.getUser();
+
+      if (userError || !user) {
+        throw new Error("Du bist nicht mehr angemeldet.");
+      }
+
+      const extensionFromName = photoFile.name
+        .split(".")
+        .pop()
+        ?.toLowerCase()
+        .replace(/[^a-z0-9]/g, "");
+      const extension =
+        extensionFromName && extensionFromName.length <= 5
+          ? extensionFromName
+          : photoFile.type === "image/png"
+            ? "png"
+            : "jpg";
+
+      uploadedPath = `${user.id}/${crypto.randomUUID()}.${extension}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from("photo-detection-feedback")
+        .upload(uploadedPath, photoFile, {
+          contentType: photoFile.type || "image/jpeg",
+          upsert: false,
+        });
+
+      if (uploadError) {
+        throw new Error(`Foto konnte nicht hochgeladen werden: ${uploadError.message}`);
+      }
+
+      let imageWidth: number | null = null;
+      let imageHeight: number | null = null;
+
+      try {
+        const dimensions = await new Promise<{ width: number; height: number }>(
+          (resolve, reject) => {
+            const image = new Image();
+            const objectUrl = URL.createObjectURL(photoFile);
+
+            image.onload = () => {
+              resolve({
+                width: image.naturalWidth,
+                height: image.naturalHeight,
+              });
+              URL.revokeObjectURL(objectUrl);
+            };
+
+            image.onerror = () => {
+              URL.revokeObjectURL(objectUrl);
+              reject(new Error("Bildgrösse konnte nicht gelesen werden."));
+            };
+
+            image.src = objectUrl;
+          }
+        );
+
+        imageWidth = dimensions.width;
+        imageHeight = dimensions.height;
+      } catch {
+        // Die Fehlermeldung soll auch gespeichert werden, wenn die
+        // Bilddimensionen ausnahmsweise nicht gelesen werden können.
+      }
+
+      const { error: insertError } = await supabase
+        .from("photo_detection_feedback")
+        .insert({
+          user_id: user.id,
+          target_type: "crossbow30m",
+          detector_version: "crossbow30-v2-gray",
+          error_type: feedbackType,
+          detected_shots: detectedShots.length,
+          image_width: imageWidth,
+          image_height: imageHeight,
+          detected_center_x: center?.x ?? null,
+          detected_center_y: center?.y ?? null,
+          detected_radius_x: radius ?? null,
+          detected_radius_y: radiusY ?? null,
+          detected_ellipse_angle: ellipseAngleDeg,
+          detected_shot_data: detectedShots.map(({ shot }) => ({
+            x: shot.x,
+            y: shot.y,
+            score: shot.score,
+          })),
+          image_path: uploadedPath,
+        });
+
+      if (insertError) {
+        await supabase.storage
+          .from("photo-detection-feedback")
+          .remove([uploadedPath]);
+
+        uploadedPath = null;
+        throw new Error(
+          `Fehlermeldung konnte nicht gespeichert werden: ${insertError.message}`
+        );
+      }
+
+      setFeedbackMessage(
+        "Danke. Die Fehlermeldung und das Foto wurden zur Analyse gespeichert."
+      );
+      setFeedbackType("");
+      setFeedbackOpen(false);
+    } catch (error) {
+      if (uploadedPath) {
+        await supabase.storage
+          .from("photo-detection-feedback")
+          .remove([uploadedPath]);
+      }
+
+      setFeedbackMessage(
+        error instanceof Error
+          ? error.message
+          : "Fehlermeldung konnte nicht gesendet werden."
+      );
+    } finally {
+      setFeedbackSending(false);
+    }
   }
 
   const instruction =
@@ -1227,6 +1222,104 @@ export default function PhotoTargetCapture({
               />
             </label>
           )}
+
+          <div className="mt-4 rounded-lg border border-slate-200 bg-white p-4">
+            {!feedbackOpen ? (
+              <button
+                type="button"
+                onClick={() => {
+                  setFeedbackOpen(true);
+                  setFeedbackMessage("");
+                }}
+                className="text-sm font-semibold text-slate-700 hover:text-slate-900"
+              >
+                ⚑ Erkennung fehlerhaft?
+              </button>
+            ) : (
+              <>
+                <p className="font-semibold text-slate-900">
+                  Fehler bei der Fotoerkennung melden
+                </p>
+                <p className="mt-2 text-sm text-slate-600">
+                  Mit dem Senden wird dieses Foto zusammen mit den technischen
+                  Daten der Erkennung zur Analyse und Verbesserung der
+                  Schusserkennung gespeichert.
+                </p>
+
+                <div className="mt-4 grid gap-2 sm:grid-cols-2">
+                  {[
+                    {
+                      value: "target_not_detected",
+                      label: "Scheibe nicht erkannt",
+                    },
+                    {
+                      value: "no_shots_detected",
+                      label: "Keine Schüsse erkannt",
+                    },
+                    {
+                      value: "missing_shots",
+                      label: "Nicht alle Schüsse erkannt",
+                    },
+                    {
+                      value: "false_shots",
+                      label: "Falsche Schüsse erkannt",
+                    },
+                  ].map((option) => (
+                    <button
+                      key={option.value}
+                      type="button"
+                      onClick={() =>
+                        setFeedbackType(
+                          option.value as
+                            | "target_not_detected"
+                            | "no_shots_detected"
+                            | "missing_shots"
+                            | "false_shots"
+                        )
+                      }
+                      className={`rounded-lg border px-3 py-3 text-left text-sm font-medium ${
+                        feedbackType === option.value
+                          ? "border-red-600 bg-red-50 text-red-700"
+                          : "border-slate-300 bg-white text-slate-700 hover:bg-slate-50"
+                      }`}
+                    >
+                      {option.label}
+                    </button>
+                  ))}
+                </div>
+
+                <div className="mt-4 flex flex-col gap-2 sm:flex-row">
+                  <button
+                    type="button"
+                    onClick={sendDetectionFeedback}
+                    disabled={!feedbackType || !photoFile || feedbackSending}
+                    className="rounded-lg bg-red-600 px-4 py-3 text-sm font-semibold text-white hover:bg-red-700 disabled:opacity-50"
+                  >
+                    {feedbackSending
+                      ? "Wird gesendet..."
+                      : "Fehlermeldung senden"}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setFeedbackOpen(false);
+                      setFeedbackType("");
+                    }}
+                    disabled={feedbackSending}
+                    className="rounded-lg border border-slate-300 bg-white px-4 py-3 text-sm font-medium text-slate-700 disabled:opacity-50"
+                  >
+                    Abbrechen
+                  </button>
+                </div>
+              </>
+            )}
+
+            {feedbackMessage && (
+              <p className="mt-3 text-sm text-slate-700">
+                {feedbackMessage}
+              </p>
+            )}
+          </div>
 
           {detectedShots.length > 0 && (
             <div className="mt-4 rounded-lg bg-white p-4">
