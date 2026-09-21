@@ -2,12 +2,31 @@
 
 import { useMemo, useState } from "react";
 
+function averageScale(values: number[], maximum: number) {
+  const valid = values.filter(Number.isFinite);
+  const min = valid.reduce((a, b) => Math.min(a, b), valid[0] ?? 0);
+  const max = valid.reduce((a, b) => Math.max(a, b), valid[0] ?? 0);
+  const padding = Math.max((max - min) * 0.15, maximum === 100 ? 0.2 : 0.05);
+  const desiredLow = Math.max(0, min - padding);
+  const desiredHigh = Math.min(Math.max(maximum, max), max + padding);
+  const rawStep = Math.max(desiredHigh - desiredLow, 0.2) / 4;
+  const magnitude = 10 ** Math.floor(Math.log10(rawStep));
+  const step = ([1, 2, 2.5, 5, 10].find((value) => value * magnitude >= rawStep) ?? 10) * magnitude;
+  const low = Number(Math.max(0, Math.floor((desiredLow + 1e-10) / step) * step).toFixed(6));
+  const high = Number(Math.max(low + step, Math.min(Math.max(maximum, max), Math.ceil((desiredHigh - 1e-10) / step) * step)).toFixed(6));
+  const ticks: number[] = [];
+  for (let value = low; value <= high + step * 1e-6; value += step) ticks.push(Number(value.toFixed(6)));
+  if (high - ticks[ticks.length - 1] > step * 1e-6) ticks.push(Number(high.toFixed(6)));
+  return { low, high, ticks };
+}
+
 type ChartResult = {
   id: string;
   date: string;
   actual_shots: number;
   total_score: number;
   average_score: number;
+  scoring_type?: "A10" | "A100" | "A5" | null;
 };
 
 type PerformanceChartProps = {
@@ -128,12 +147,10 @@ export default function PerformanceChart({
     ])
   );
 
-  const maxAverage = Math.max(
-    10,
-    ...dailyResults.map((result) =>
-      Number(result.average_score)
-    )
-  );
+  const averageValues = dailyResults.map((result) => Number(result.average_score));
+  const maximum = results.some((result) => result.scoring_type === "A100") || averageValues.some((value) => value > 10)
+    ? 100 : results.every((result) => result.scoring_type === "A5") ? 5 : 10;
+  const { low: minAverage, high: maxAverage, ticks: averageTicks } = averageScale(averageValues, maximum);
 
   const xForIndex = (index: number) => {
     if (dailyResults.length === 1) {
@@ -151,7 +168,7 @@ export default function PerformanceChart({
     return (
       paddingTop +
       chartHeight -
-      (average / maxAverage) * chartHeight
+      ((average - minAverage) / (maxAverage - minAverage)) * chartHeight
     );
   };
 
@@ -195,7 +212,7 @@ export default function PerformanceChart({
 
         <p className="mt-1 text-sm text-slate-600">
           Gewichteter Durchschnitt pro Schuss und Anzahl
-          Schüsse pro Trainingstag.
+          Schüsse pro Trainingstag. Die Punkteachse passt sich den Werten an; die Schusszahl-Achse beginnt bei null.
         </p>
       </div>
 
@@ -255,7 +272,7 @@ export default function PerformanceChart({
             );
           })}
 
-          {[0, 2, 4, 6, 8, 10].map((value) => {
+          {averageTicks.map((value) => {
             const y = yForAverage(value);
 
             return (
@@ -276,7 +293,7 @@ export default function PerformanceChart({
                   fontSize="12"
                   fill="#475569"
                 >
-                  {value}
+                  {value.toLocaleString("de-CH", { maximumFractionDigits: 2 })}
                 </text>
               </g>
             );

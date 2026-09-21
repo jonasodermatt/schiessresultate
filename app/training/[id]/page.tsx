@@ -20,6 +20,7 @@ type TrainingSession = {
 
 type TrainingProgram = {
   id: string;
+  scoring_type: "A10" | "A100" | "A5" | null;
   training_session_id: string;
   sort_order: number;
   shot_mode: "fixed" | "free";
@@ -149,6 +150,7 @@ export default function TrainingSessionPage() {
           id,
           training_session_id,
           sort_order,
+          scoring_type,
           shot_mode,
           planned_shots,
           status,
@@ -536,6 +538,7 @@ export default function TrainingSessionPage() {
                         {program.shot_mode === "free"
                           ? "Freies Training"
                           : `${program.planned_shots} Schuss`}
+                        {" · "}{program.scoring_type ?? "A10"}
                       </p>
 
                       <p className="mt-1 text-sm text-slate-500">
@@ -587,6 +590,7 @@ export default function TrainingSessionPage() {
                         {program.shot_mode === "free"
                           ? "Freies Training"
                           : `${program.planned_shots} Schuss`}
+                        {" · "}{program.scoring_type ?? "A10"}
                       </p>
 
                       {program.completed_at && (

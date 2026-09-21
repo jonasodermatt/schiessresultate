@@ -4,7 +4,40 @@ import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "../../../lib/supabase";
-import Target from "@/components/Target";
+import Target, {
+  RIFLE_10M_TARGET, RIFLE_50M_TARGET, RIFLE_300M_TARGET,
+  type TargetType,
+} from "@/components/Target";
+
+type ScoringType = "A10" | "A100" | "A5";
+
+function scoreForScoringType(
+  x: number, y: number, a10Score: number,
+  scoringType: ScoringType, targetType: TargetType
+): number {
+  if (scoringType === "A10") return a10Score;
+  if (scoringType === "A5") return Math.ceil(a10Score / 2);
+
+  const definition = targetType === "rifle10m" ? RIFLE_10M_TARGET
+    : targetType === "rifle50m" ? RIFLE_50M_TARGET
+    : targetType === "rifle300m" ? RIFLE_300M_TARGET : null;
+  // Boundaries describe the projectile centre, matching Target's edge scoring.
+  // Subdivide each A10 band radially, including the whole central 10 band.
+  const distance = Math.hypot(x, y) * (definition ? definition.targetSizeMm / 2 : 1);
+  const tenRadius = definition
+    ? definition.tenDiameterMm / 2 + definition.projectileDiameterMm / 2 : 0.09;
+  const ringWidth = definition ? definition.ringWidthMm : 0.09;
+  for (let ring = 10; ring >= 1; ring--) {
+    const inner = ring === 10 ? 0 : tenRadius + (9 - ring) * ringWidth;
+    const width = ring === 10 ? tenRadius : ringWidth;
+    if (distance <= inner + width + 1e-10) {
+      const subdivision = Math.max(1, Math.min(10,
+        Math.ceil(((distance - inner) / width) * 10 - 1e-10)));
+      return ring * 10 + 1 - subdivision;
+    }
+  }
+  return 0;
+}
 import PhotoTargetCapture, {
   type PhotoDetectedShot,
 } from "@/components/PhotoTargetCapture";
@@ -65,6 +98,7 @@ export default function NewResultPage() {
 
   const [equipment, setEquipment] = useState<Equipment[]>([]);
   const [equipmentId, setEquipmentId] = useState("");
+  const [equipmentLoading, setEquipmentLoading] = useState(true);
   const [selectedDistance, setSelectedDistance] =
   useState<number | null>(null);
 
@@ -82,6 +116,7 @@ const [frontSightSetting, setFrontSightSetting] =
   );
   const [shotMode, setShotMode] = useState<"fixed" | "free">("fixed");
   const [plannedShots, setPlannedShots] = useState(10);
+  const [scoringType, setScoringType] = useState<ScoringType>("A10");
   const [shots, setShots] = useState<Shot[]>([]);
   const [selectedX, setSelectedX] = useState<number | null>(null);
   const [selectedY, setSelectedY] = useState<number | null>(null);
@@ -235,6 +270,7 @@ useEffect(() => {
 
     if (equipmentError) {
       setMessage(`Fehler: ${equipmentError.message}`);
+      setEquipmentLoading(false);
       return;
     }
 
@@ -330,6 +366,7 @@ useEffect(() => {
         .select(`
           id,
           training_session_id,
+          scoring_type,
           shot_mode,
           planned_shots,
           status
@@ -363,6 +400,9 @@ useEffect(() => {
         return;
       }
 
+      const sessionIsRifle = ((sessionEquipment.category ?? "") + " " + sessionEquipment.name).toLowerCase().includes("gewehr");
+      setScoringType(sessionIsRifle && (programData.scoring_type === "A100" || programData.scoring_type === "A5")
+        ? programData.scoring_type : "A10");
       setEquipmentId(sessionData.equipment_id);
       setSelectedDistance(
         sessionData.distance_m !== null
@@ -425,6 +465,7 @@ useEffect(() => {
       }
 
       setTrainingProgramLoaded(true);
+      setEquipmentLoading(false);
       return;
     }
 
@@ -538,6 +579,8 @@ useEffect(() => {
     } else {
       setShootingRangeId("");
     }
+
+    setEquipmentLoading(false);
   }
 
   loadData();
@@ -570,6 +613,29 @@ const isRifle =
   equipmentCategory.includes("gewehr") ||
   equipmentName.includes("gewehr");
 
+const effectiveScoringType: ScoringType = isRifle ? scoringType : "A10";
+const maxShotScore = effectiveScoringType === "A100" ? 100 : effectiveScoringType === "A5" ? 5 : 10;
+
+useEffect(() => {
+  if (!isRifle) setScoringType("A10");
+}, [isRifle]);
+
+function resetScoringInput(): boolean {
+  if ((shots.length > 0 || totalOnlyScore.trim() !== "") &&
+      !window.confirm("Beim Wechsel der Wertungsart werden die erfassten Schüsse und das Total zurückgesetzt. Fortfahren?")) return false;
+  setShots([]);
+  setTotalOnlyScore("");
+  setSelectedX(null);
+  setSelectedY(null);
+  setSelectedScore(null);
+  return true;
+}
+
+function changeScoringType(next: ScoringType) {
+  if (isTrainingMode || !isRifle || next === scoringType) return;
+  if (resetScoringInput()) setScoringType(next);
+}
+
 const targetType =
   isCrossbow && selectedDistance === 10
     ? "crossbow10m"
@@ -592,6 +658,15 @@ const availablePositions =
   selectedEquipment?.equipment_positions ?? [];
 
   function handleEquipmentChange(newEquipmentId: string) {
+  const nextEquipment = equipment.find((item) => item.id === newEquipmentId);
+  const nextIsRifle = ((nextEquipment?.category ?? "") + " " + (nextEquipment?.name ?? "")).toLowerCase().includes("gewehr");
+  if (!nextIsRifle && effectiveScoringType !== "A10") {
+    if (!resetScoringInput()) return;
+    setScoringType("A10");
+  }
+  setSelectedX(null);
+  setSelectedY(null);
+  setSelectedScore(null);
   setEquipmentId(newEquipmentId);
 
   const newEquipment = equipment.find(
@@ -666,6 +741,7 @@ const totalScore = useMemo(
     return;
   }
 
+  if (!Number.isInteger(score) || score < 0 || score > maxShotScore) return;
   setShots((current) => [
     ...current,
     {
@@ -694,7 +770,7 @@ function addPhotoShots(photoShots: PhotoDetectedShot[]) {
     return [
       ...current,
       ...photoShots.slice(0, availableShots).map((shot) => ({
-        score: shot.score,
+        score: scoreForScoringType(shot.x, shot.y, shot.score, effectiveScoringType, targetType),
         x: shot.x,
         y: shot.y,
       })),
@@ -737,7 +813,7 @@ else score = 0;
 
   setSelectedX(Number(x.toFixed(3)));
   setSelectedY(Number(y.toFixed(3)));
-  setSelectedScore(score);
+  setSelectedScore(scoreForScoringType(x, y, score, effectiveScoringType, targetType));
 }
 
 function getEquipmentPositionLabel(position: string) {
@@ -928,8 +1004,9 @@ function removeLastShot() {
       resultTotal = Number(totalOnlyScore);
 
       if (
-        actualShots <= 0 ||
-        Number.isNaN(resultTotal)
+        !Number.isInteger(actualShots) || actualShots <= 0 ||
+        totalOnlyScore.trim() === "" || !Number.isInteger(resultTotal) ||
+        resultTotal < 0 || resultTotal > actualShots * maxShotScore
       ) {
         setMessage(
           "Bitte Anzahl Schüsse und Total korrekt eingeben."
@@ -976,6 +1053,7 @@ try {
           training_session_program_id:
             trainingProgramId || null,
           input_type: inputType,
+          scoring_type: effectiveScoringType,
           shot_mode:
             inputType === "individual"
               ? shotMode
@@ -1202,6 +1280,19 @@ router.push("/results");
     </button>
   )}
 </div>
+{isRifle && (
+  <div className="mb-5">
+    <label htmlFor="scoringType" className="mb-2 block text-sm font-medium text-slate-700">Wertungsart</label>
+    <select id="scoringType" value={effectiveScoringType} disabled={isTrainingMode}
+      onChange={(event) => changeScoringType(event.target.value as ScoringType)}
+      className="w-full rounded-lg border border-slate-300 bg-white px-4 py-3 text-slate-900">
+      <option value="A10">A10</option>
+      <option value="A100">A100</option>
+      <option value="A5">A5</option>
+    </select>
+    {isTrainingMode && <p className="mt-1 text-xs text-slate-500">Wertung aus dem gewählten Trainingsprogramm.</p>}
+  </div>
+)}
 {showResultDetails && (
   <>
     <div className="grid gap-5 md:grid-cols-2">
@@ -1212,10 +1303,15 @@ router.push("/results");
 
         <select
           value={equipmentId}
+          disabled={equipmentLoading || isTrainingMode}
           onChange={(e) => handleEquipmentChange(e.target.value)}
-          className="w-full rounded-lg border border-slate-300 bg-white px-4 py-3 text-slate-900"
+          className="w-full rounded-lg border border-slate-300 bg-white px-4 py-3 text-slate-900 disabled:bg-slate-50 disabled:text-slate-500"
         >
-          {equipment.length === 0 && (
+          {equipmentLoading && (
+            <option value="">Letztes Sportgerät wird geladen …</option>
+          )}
+
+          {!equipmentLoading && equipment.length === 0 && (
             <option value="">Kein Sportgerät vorhanden</option>
           )}
 
@@ -1594,7 +1690,7 @@ router.push("/results");
 
   setSelectedX(x);
   setSelectedY(y);
-  setSelectedScore(score);
+  setSelectedScore(scoreForScoringType(x, y, score, effectiveScoringType, targetType));
 }}
 />
 </div>
@@ -1691,7 +1787,7 @@ selectedScore !== null ? (
         gap: "8px",
       }}
     >
-      {Array.from({ length: 11 }, (_, score) => (
+      {Array.from({ length: maxShotScore + 1 }, (_, score) => (
         <button
           key={score}
           type="button"
@@ -1795,7 +1891,9 @@ selectedScore !== null ? (
 
                 <input
                   type="number"
-                  step="0.01"
+                  step="1"
+                  min={0}
+                  max={totalOnlyShots * maxShotScore}
                   value={totalOnlyScore}
                   onChange={(e) =>
                     setTotalOnlyScore(e.target.value)

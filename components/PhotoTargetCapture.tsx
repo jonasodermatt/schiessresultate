@@ -47,6 +47,7 @@ export default function PhotoTargetCapture({
   const [radiusY, setRadiusY] = useState<number | null>(null);
   const [ellipseAngleDeg, setEllipseAngleDeg] = useState(0);
   const [rotationDeg, setRotationDeg] = useState(0);
+  const [zoom, setZoom] = useState(1);
   const [calibrationStep, setCalibrationStep] = useState<
     "center" | "radius" | "shots"
   >("center");
@@ -71,6 +72,7 @@ export default function PhotoTargetCapture({
     setRadiusY(null);
     setEllipseAngleDeg(0);
     setRotationDeg(0);
+    setZoom(1);
     setMarkers([]);
     setAnalyzing(false);
     setAnalysisMessage("");
@@ -102,8 +104,8 @@ export default function PhotoTargetCapture({
       const originalY =
         Math.sin(angle) * dx + Math.cos(angle) * dy;
 
-      x = center.x + originalX / rect.width;
-      y = center.y - originalY / rect.height;
+      x = center.x + originalX / (rect.width * zoom);
+      y = center.y - originalY / (rect.height * zoom);
     }
 
     return {
@@ -243,6 +245,7 @@ export default function PhotoTargetCapture({
     setRadius(null);
     setRadiusY(null);
     setEllipseAngleDeg(0);
+    setZoom(1);
     setMarkers([]);
     setCalibrationStep("center");
   }
@@ -274,6 +277,8 @@ export default function PhotoTargetCapture({
       context.drawImage(image, 0, 0, width, height);
       const pixels = context.getImageData(0, 0, width, height).data;
       const dark = new Uint8Array(width * height);
+      const luminanceValues = new Uint8Array(width * height);
+      const luminanceHistogram = new Uint32Array(256);
 
       for (let index = 0; index < width * height; index++) {
         const offset = index * 4;
@@ -281,7 +286,45 @@ export default function PhotoTargetCapture({
           pixels[offset] * 0.299 +
           pixels[offset + 1] * 0.587 +
           pixels[offset + 2] * 0.114;
-        dark[index] = luminance < 92 ? 1 : 0;
+        const roundedLuminance = Math.max(
+          0,
+          Math.min(255, Math.round(luminance))
+        );
+        luminanceValues[index] = roundedLuminance;
+        luminanceHistogram[roundedLuminance]++;
+      }
+
+      // Den Schwarz-Weiss-Trennwert für jedes Foto separat bestimmen.
+      // Dadurch bleibt die schwarze 3er-Fläche auch bei hellerer oder
+      // dunklerer Belichtung zusammenhängend.
+      let totalLuminance = 0;
+      for (let value = 0; value < 256; value++) {
+        totalLuminance += value * luminanceHistogram[value];
+      }
+      let backgroundWeight = 0;
+      let backgroundSum = 0;
+      let maximumVariance = -1;
+      let otsuThreshold = 92;
+      for (let threshold = 35; threshold <= 190; threshold++) {
+        backgroundWeight += luminanceHistogram[threshold];
+        if (backgroundWeight === 0) continue;
+        const foregroundWeight = width * height - backgroundWeight;
+        if (foregroundWeight === 0) break;
+        backgroundSum += threshold * luminanceHistogram[threshold];
+        const backgroundMean = backgroundSum / backgroundWeight;
+        const foregroundMean =
+          (totalLuminance - backgroundSum) / foregroundWeight;
+        const meanDifference = backgroundMean - foregroundMean;
+        const betweenClassVariance =
+          backgroundWeight * foregroundWeight * meanDifference * meanDifference;
+        if (betweenClassVariance > maximumVariance) {
+          maximumVariance = betweenClassVariance;
+          otsuThreshold = threshold;
+        }
+      }
+      const darkThreshold = Math.max(72, Math.min(150, otsuThreshold));
+      for (let index = 0; index < width * height; index++) {
+        dark[index] = luminanceValues[index] < darkThreshold ? 1 : 0;
       }
 
       // Kleine Ringlinien und Ziffern werden über die lokale
@@ -387,8 +430,8 @@ export default function PhotoTargetCapture({
         const sufficientlyLarge =
           componentWidth > width * 0.12 &&
           componentHeight > height * 0.12 &&
-          componentWidth < width * 0.8 &&
-          componentHeight < height * 0.8;
+          componentWidth < width * 0.98 &&
+          componentHeight < height * 0.98;
 
         if (
           sufficientlyLarge &&
@@ -543,8 +586,8 @@ export default function PhotoTargetCapture({
         );
       }
 
-      const blackCenterX = fittedEllipse.centerX;
-      const blackCenterY = fittedEllipse.centerY;
+      let blackCenterX = fittedEllipse.centerX;
+      let blackCenterY = fittedEllipse.centerY;
       const blackRadiusX = fittedEllipse.radiusX;
       const blackRadiusY = fittedEllipse.radiusY;
       const ellipseAngle = fittedEllipse.angle;
@@ -554,27 +597,98 @@ export default function PhotoTargetCapture({
       const fittedAxisRatio =
         Math.min(blackRadiusX, blackRadiusY) /
         Math.max(blackRadiusX, blackRadiusY);
-      const scoringExtentX = Math.sqrt(
-        (scoringRadiusX * Math.cos(ellipseAngle)) ** 2 +
-          (scoringRadiusY * Math.sin(ellipseAngle)) ** 2
+      const blackExtentX = Math.sqrt(
+        (blackRadiusX * Math.cos(ellipseAngle)) ** 2 +
+          (blackRadiusY * Math.sin(ellipseAngle)) ** 2
       );
-      const scoringExtentY = Math.sqrt(
-        (scoringRadiusX * Math.sin(ellipseAngle)) ** 2 +
-          (scoringRadiusY * Math.cos(ellipseAngle)) ** 2
+      const blackExtentY = Math.sqrt(
+        (blackRadiusX * Math.sin(ellipseAngle)) ** 2 +
+          (blackRadiusY * Math.cos(ellipseAngle)) ** 2
       );
-      const scoringEllipseFitsImage =
-        blackCenterX - scoringExtentX >= -width * 0.02 &&
-        blackCenterX + scoringExtentX <= width * 1.02 &&
-        blackCenterY - scoringExtentY >= -height * 0.02 &&
-        blackCenterY + scoringExtentY <= height * 1.02;
+      const blackEllipseFitsImage =
+        blackCenterX - blackExtentX >= -width * 0.015 &&
+        blackCenterX + blackExtentX <= width * 1.015 &&
+        blackCenterY - blackExtentY >= -height * 0.015 &&
+        blackCenterY + blackExtentY <= height * 1.015;
 
-      if (fittedAxisRatio < 0.42 || !scoringEllipseFitsImage) {
+      if (fittedAxisRatio < 0.42 || !blackEllipseFitsImage) {
         setAnalyzing(false);
         setAnalysisMessage(
-          "Der schwarze 3er-Rand ist nicht vollständig und sicher im Foto. Bitte Mitte und 1er-Rand manuell setzen."
+          "Der schwarze 3er-Rand ist nicht vollständig und sicher im Foto. Bitte Mitte und 3er-Rand manuell setzen."
         );
         return;
       }
+
+      // Bei einer schrägen Aufnahme liegt das perspektivisch projizierte
+      // Zentrum der inneren Ringe nicht zwingend exakt im Mittelpunkt der
+      // äusseren schwarzen Ellipse. Deshalb das Wertungszentrum nochmals
+      // unabhängig an mehreren inneren Ringlinien ausrichten.
+      const ringRatios = [3 / 45, 9 / 45, 15 / 45, 21 / 45, 27 / 45];
+      const ringCenterScore = (centerX: number, centerY: number) => {
+        let score = 0;
+        for (const ratio of ringRatios) {
+          const offset = Math.max(1.4, Math.sqrt(blackRadiusX * blackRadiusY) * 0.008);
+          for (let sample = 0; sample < 64; sample++) {
+            const parameter = (sample / 64) * Math.PI * 2;
+            const localX = blackRadiusX * ratio * Math.cos(parameter);
+            const localY = blackRadiusY * ratio * Math.sin(parameter);
+            const directionX =
+              Math.cos(ellipseAngle) * localX -
+              Math.sin(ellipseAngle) * localY;
+            const directionY =
+              Math.sin(ellipseAngle) * localX +
+              Math.cos(ellipseAngle) * localY;
+            const length = Math.max(1, Math.hypot(directionX, directionY));
+            const unitX = directionX / length;
+            const unitY = directionY / length;
+            const onRing = sampleLuminance(
+              centerX + directionX,
+              centerY + directionY
+            );
+            const besideRing =
+              (sampleLuminance(
+                centerX + directionX - unitX * offset,
+                centerY + directionY - unitY * offset
+              ) +
+                sampleLuminance(
+                  centerX + directionX + unitX * offset,
+                  centerY + directionY + unitY * offset
+                )) /
+              2;
+            // Weisse Ringlinien auf schwarzem Grund. Einzelne sehr starke
+            // Kanten (Loch, Ziffer) begrenzen, damit nur eine über viele
+            // Winkel durchgehende Ringlinie das Zentrum bestimmt.
+            score += Math.max(0, Math.min(38, onRing - besideRing));
+          }
+        }
+        return score;
+      };
+
+      const centerSearchRadius =
+        Math.sqrt(blackRadiusX * blackRadiusY) * 0.13;
+      let bestRingCenterScore = ringCenterScore(blackCenterX, blackCenterY);
+      let bestRingCenterX = blackCenterX;
+      let bestRingCenterY = blackCenterY;
+      for (const step of [Math.max(2, centerSearchRadius / 12), 0.75]) {
+        const searchRadius =
+          step < 1 ? Math.max(3, centerSearchRadius / 10) : centerSearchRadius;
+        const originX = bestRingCenterX;
+        const originY = bestRingCenterY;
+        for (let offsetY = -searchRadius; offsetY <= searchRadius; offsetY += step) {
+          for (let offsetX = -searchRadius; offsetX <= searchRadius; offsetX += step) {
+            const candidateX = originX + offsetX;
+            const candidateY = originY + offsetY;
+            const candidateScore = ringCenterScore(candidateX, candidateY);
+            if (candidateScore > bestRingCenterScore) {
+              bestRingCenterScore = candidateScore;
+              bestRingCenterX = candidateX;
+              bestRingCenterY = candidateY;
+            }
+          }
+        }
+      }
+      blackCenterX = bestRingCenterX;
+      blackCenterY = bestRingCenterY;
       const nextCenter = {
         x: blackCenterX / width,
         y: blackCenterY / height,
@@ -688,6 +802,9 @@ export default function PhotoTargetCapture({
         let area = 0;
         let sumX = 0;
         let sumY = 0;
+        let sumXX = 0;
+        let sumYY = 0;
+        let sumXY = 0;
         let minX = width;
         let minY = height;
         let maxX = 0;
@@ -700,6 +817,9 @@ export default function PhotoTargetCapture({
           area++;
           sumX += x;
           sumY += y;
+          sumXX += x * x;
+          sumYY += y * y;
+          sumXY += x * y;
           minX = Math.min(minX, x);
           minY = Math.min(minY, y);
           maxX = Math.max(maxX, x);
@@ -725,57 +845,60 @@ export default function PhotoTargetCapture({
         const componentAspect = componentWidth / componentHeight;
         const componentCenterX = sumX / area;
         const componentCenterY = sumY / area;
-        const textureRadius = expectedHoleDiameter * 0.52;
-        let textureSamples = 0;
-        let texturedSamples = 0;
-        for (
-          let textureY = Math.floor(componentCenterY - textureRadius);
-          textureY <= Math.ceil(componentCenterY + textureRadius);
-          textureY++
-        ) {
-          for (
-            let textureX = Math.floor(componentCenterX - textureRadius);
-            textureX <= Math.ceil(componentCenterX + textureRadius);
-            textureX++
-          ) {
-            if (
-              (textureX - componentCenterX) ** 2 +
-                (textureY - componentCenterY) ** 2 >
-              textureRadius * textureRadius
-            ) {
-              continue;
-            }
-            const edgeStrength =
-              Math.abs(
-                sampleLuminance(textureX + 1, textureY) -
-                  sampleLuminance(textureX - 1, textureY)
-              ) +
-              Math.abs(
-                sampleLuminance(textureX, textureY + 1) -
-                  sampleLuminance(textureX, textureY - 1)
-              );
-            textureSamples++;
-            if (edgeStrength >= 30) texturedSamples++;
-          }
-        }
-        const textureRatio =
-          textureSamples > 0 ? texturedSamples / textureSamples : 0;
+        const componentMajorSize = Math.max(componentWidth, componentHeight);
+        const componentMinorSize = Math.min(componentWidth, componentHeight);
         if (
           area >= Math.max(12, expectedHoleDiameter * expectedHoleDiameter * 0.18) &&
-          componentWidth >= expectedHoleDiameter * 0.65 &&
-          componentHeight >= expectedHoleDiameter * 0.65 &&
-          componentWidth <= expectedHoleDiameter * 1.75 &&
-          componentHeight <= expectedHoleDiameter * 1.75 &&
-          componentAspect >= 0.65 &&
-          componentAspect <= 1.54 &&
-          fillRatio >= 0.25 &&
-          textureRatio >= 0.28
+          componentMinorSize >= expectedHoleDiameter * 0.58 &&
+          componentMajorSize <= expectedHoleDiameter * 3.2 &&
+          componentAspect >= 0.34 &&
+          componentAspect <= 2.95 &&
+          fillRatio >= 0.45
         ) {
-          candidates.push({
-            x: componentCenterX,
-            y: componentCenterY,
-            area,
-          });
+          const looksLikeMergedDoubleHit =
+            componentMajorSize >= expectedHoleDiameter * 1.55 &&
+            componentMajorSize <= expectedHoleDiameter * 2.8;
+
+          if (looksLikeMergedDoubleHit) {
+            const covarianceXX = sumXX / area - componentCenterX ** 2;
+            const covarianceYY = sumYY / area - componentCenterY ** 2;
+            const covarianceXY =
+              sumXY / area - componentCenterX * componentCenterY;
+            const majorAxisAngle =
+              0.5 *
+              Math.atan2(
+                2 * covarianceXY,
+                covarianceXX - covarianceYY
+              );
+            const halfSeparation = Math.min(
+              expectedHoleDiameter * 0.48,
+              Math.max(
+                expectedHoleDiameter * 0.34,
+                (componentMajorSize - expectedHoleDiameter * 0.72) / 2
+              )
+            );
+            const offsetX = Math.cos(majorAxisAngle) * halfSeparation;
+            const offsetY = Math.sin(majorAxisAngle) * halfSeparation;
+
+            candidates.push(
+              {
+                x: componentCenterX - offsetX,
+                y: componentCenterY - offsetY,
+                area: area / 2,
+              },
+              {
+                x: componentCenterX + offsetX,
+                y: componentCenterY + offsetY,
+                area: area / 2,
+              }
+            );
+          } else {
+            candidates.push({
+              x: componentCenterX,
+              y: componentCenterY,
+              area,
+            });
+          }
         }
       }
 
@@ -1002,7 +1125,7 @@ export default function PhotoTargetCapture({
           merged.every(
             (existing) =>
               Math.hypot(existing.x - candidate.x, existing.y - candidate.y) >
-              expectedHoleDiameter * 0.8
+              expectedHoleDiameter * 0.62
           )
         ) {
           merged.push(candidate);
@@ -1010,22 +1133,55 @@ export default function PhotoTargetCapture({
         if (merged.length >= 20) break;
       }
 
+      // Echte Löcher derselben Scheibe erzeugen normalerweise eine ähnlich
+      // grosse zusammenhängende Ausriss-/Hintergrundfläche. Kleine farbige
+      // Druck- oder Lichtartefakte dürfen nicht allein wegen ihrer Farbe als
+      // Treffer gelten. Der Filter ist relativ zum stärksten Loch und enthält
+      // ausdrücklich keine Annahme über die Anzahl der Treffer.
+      const strongestCandidateArea = merged.reduce(
+        (maximum, candidate) => Math.max(maximum, candidate.area),
+        0
+      );
+      const credibleCandidates = merged.filter(
+        (candidate) =>
+          candidate.area >= expectedHoleDiameter * expectedHoleDiameter * 0.24 &&
+          candidate.area >= strongestCandidateArea * 0.38
+      );
+
+      const automaticMarkers = credibleCandidates
+        .map((candidate) => {
+          const dx = candidate.x - blackCenterX;
+          const dy = candidate.y - blackCenterY;
+          const ellipseX =
+            Math.cos(ellipseAngle) * dx + Math.sin(ellipseAngle) * dy;
+          const ellipseY =
+            -Math.sin(ellipseAngle) * dx + Math.cos(ellipseAngle) * dy;
+          const shotX =
+            (ellipseX / scoringRadiusX) * SCORING_RADIUS_ON_TARGET;
+          const shotY =
+            (-ellipseY / scoringRadiusY) * SCORING_RADIUS_ON_TARGET;
+
+          return {
+            id: crypto.randomUUID(),
+            x: candidate.x / width,
+            y: candidate.y / height,
+            score: scoreCrossbow30m(shotX, shotY),
+            distance: Math.hypot(shotX, shotY),
+          };
+        })
+        .sort((a, b) => b.score - a.score || a.distance - b.distance)
+        .map(({ id, x, y }) => ({ id, x, y }));
+
       setCenter(nextCenter);
       setRadius(nextRadius);
       setRadiusY(nextRadiusY);
       setEllipseAngleDeg(nextEllipseAngleDeg);
-      setMarkers(
-        merged.map((candidate) => ({
-          id: crypto.randomUUID(),
-          x: candidate.x / width,
-          y: candidate.y / height,
-        }))
-      );
+      setMarkers(automaticMarkers);
       setCalibrationStep("shots");
       setAnalyzing(false);
       setAnalysisMessage(
-        merged.length > 0
-          ? `${merged.length} mögliche Treffer erkannt. Bitte kontrollieren und korrigieren.`
+        automaticMarkers.length > 0
+          ? `${automaticMarkers.length} mögliche Treffer erkannt. Bitte kontrollieren und korrigieren.`
           : "Der 1er-Ring wurde erkannt. Schusslöcher bitte ergänzen."
       );
     }, 30);
@@ -1089,7 +1245,7 @@ export default function PhotoTargetCapture({
             <div
               className="relative h-full w-full"
               style={{
-                transform: `rotate(${rotationDeg}deg)`,
+                transform: `rotate(${rotationDeg}deg) scale(${zoom})`,
                 transformOrigin: center
                   ? `${center.x * 100}% ${center.y * 100}%`
                   : "50% 50%",
@@ -1214,18 +1370,33 @@ export default function PhotoTargetCapture({
           </div>
 
           {radius && (
-            <label className="mt-4 block text-sm font-medium text-slate-700">
-              Feinrotation: {rotationDeg}°
-              <input
-                type="range"
-                min={-180}
-                max={180}
-                step={1}
-                value={rotationDeg}
-                onChange={(event) => setRotationDeg(Number(event.target.value))}
-                className="mt-2 w-full"
-              />
-            </label>
+            <div className="mt-4 space-y-4">
+              <label className="block text-sm font-medium text-slate-700">
+                Feinrotation: {rotationDeg}°
+                <input
+                  type="range"
+                  min={-180}
+                  max={180}
+                  step={1}
+                  value={rotationDeg}
+                  onChange={(event) => setRotationDeg(Number(event.target.value))}
+                  className="mt-2 w-full"
+                />
+              </label>
+
+              <label className="block text-sm font-medium text-slate-700">
+                Zoom: {Math.round(zoom * 100)} %
+                <input
+                  type="range"
+                  min={1}
+                  max={4}
+                  step={0.1}
+                  value={zoom}
+                  onChange={(event) => setZoom(Number(event.target.value))}
+                  className="mt-2 w-full"
+                />
+              </label>
+            </div>
           )}
 
           {detectedShots.length > 0 && (

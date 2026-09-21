@@ -778,32 +778,64 @@ export default function Target({
       projectileDiameterMm
     );
 
-  // Der Trefferkreis entspricht dem realen Pfeil- bzw.
-  // Geschossdurchmesser im Massstab der gesamten Scheibe.
-  // Da er innerhalb der gezoomten Scheibe liegt, skaliert er
-  // automatisch proportional mit jeder Zoomstufe.
-  const projectileMarkerSizePx =
-    targetDefinition
-      ? (
-          targetDefinition.projectileDiameterMm /
-          targetDefinition.targetSizeMm
-        ) * viewportSize
-      : 24;
+  const isRifleTarget =
+    targetType === "rifle10m" ||
+    targetType === "rifle50m" ||
+    targetType === "rifle300m";
 
-  const projectileMarkerBorderPx =
-    targetDefinition
+  // Nur Gewehr erhält eine Mindestgrösse in Bildschirmpixeln.
+  // Scheibengeometrie und Geschossdurchmesser für die Wertung bleiben gleich.
+  const physicalMarkerSizePx = targetDefinition
+    ? (targetDefinition.projectileDiameterMm /
+        targetDefinition.targetSizeMm) * viewportSize
+    : 24;
+
+  const projectileMarkerSizePx = isRifleTarget
+    ? Math.max(physicalMarkerSizePx, 24 / zoomScale)
+    : physicalMarkerSizePx;
+
+  const projectileMarkerBorderPx = isRifleTarget
+    ? Math.max(1.5 / zoomScale, projectileMarkerSizePx * 0.08)
+    : targetDefinition
       ? Math.max(0.35, projectileMarkerSizePx * 0.08)
       : 2;
 
-  const projectileMarkerFontSizePx =
-    targetDefinition
+  const projectileMarkerFontSizePx = isRifleTarget
+    ? projectileMarkerSizePx * 0.36
+    : targetDefinition
       ? Math.max(1, projectileMarkerSizePx * 0.45)
       : 11;
-
   const selectedShotHitSizePx = Math.max(
     projectileMarkerSizePx,
     44 / zoomScale
   );
+
+  // SVG keeps the marker circular even when CSS constrains its container.
+  function renderRifleMarker(label: number) {
+    return (
+      <svg
+        width={projectileMarkerSizePx}
+        height={projectileMarkerSizePx}
+        viewBox="0 0 100 100"
+        preserveAspectRatio="xMidYMid meet"
+        aria-hidden="true"
+        style={{
+          display: "block",
+          width: projectileMarkerSizePx,
+          height: projectileMarkerSizePx,
+          flex: "0 0 auto",
+          overflow: "visible",
+          pointerEvents: "none",
+        }}
+      >
+        <circle cx="50" cy="50" r="46" fill="#dc2626" stroke="white" strokeWidth="8" />
+        <text x="50" y="50" textAnchor="middle" dominantBaseline="central"
+          fill="white" fontSize="34" fontWeight="bold" fontFamily="Arial, sans-serif">
+          {label}
+        </text>
+      </svg>
+    );
+  }
 
   return (
     <div>
@@ -914,12 +946,17 @@ export default function Target({
                   }%`,
                   width: `${projectileMarkerSizePx}px`,
                   height: `${projectileMarkerSizePx}px`,
+                    flexShrink: isRifleTarget ? 0 : undefined,
+                    minWidth: isRifleTarget ? `${projectileMarkerSizePx}px` : undefined,
+                    minHeight: isRifleTarget ? `${projectileMarkerSizePx}px` : undefined,
+                    lineHeight: isRifleTarget ? 1 : undefined,
+                    overflow: isRifleTarget ? "visible" : undefined,
                   transform: "translate(-50%, -50%)",
                   transformOrigin: "center",
                   boxSizing: "border-box",
                   borderRadius: "50%",
-                  backgroundColor: "#dc2626",
-                  border: `${projectileMarkerBorderPx}px solid white`,
+                  backgroundColor: isRifleTarget ? "transparent" : "#dc2626",
+                  border: isRifleTarget ? "none" : `${projectileMarkerBorderPx}px solid white`,
                   color: "white",
                   fontSize: `${projectileMarkerFontSizePx}px`,
                   fontWeight: "bold",
@@ -930,7 +967,7 @@ export default function Target({
                   pointerEvents: "none",
                 }}
               >
-                {shot.shot_number}
+                {isRifleTarget ? renderRifleMarker(shot.shot_number) : shot.shot_number}
               </div>
             ))}
 
@@ -981,10 +1018,16 @@ export default function Target({
                     : "grab",
                 }}
               >
+                {isRifleTarget ? renderRifleMarker(selectedScore) : (
                 <div
                   style={{
                     width: `${projectileMarkerSizePx}px`,
                     height: `${projectileMarkerSizePx}px`,
+                    flexShrink: isRifleTarget ? 0 : undefined,
+                    minWidth: isRifleTarget ? `${projectileMarkerSizePx}px` : undefined,
+                    minHeight: isRifleTarget ? `${projectileMarkerSizePx}px` : undefined,
+                    lineHeight: isRifleTarget ? 1 : undefined,
+                    overflow: isRifleTarget ? "hidden" : undefined,
                     boxSizing: "border-box",
                     borderRadius: "50%",
                     border: `${projectileMarkerBorderPx}px solid white`,
@@ -1000,6 +1043,7 @@ export default function Target({
                 >
                   {selectedScore}
                 </div>
+                )}
               </div>
             )}
         </div>

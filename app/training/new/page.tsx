@@ -5,6 +5,8 @@ import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "../../../lib/supabase";
 
+type ScoringType = "A10" | "A100" | "A5";
+
 type EquipmentDistance = {
   distance_m: number;
 };
@@ -16,6 +18,7 @@ type EquipmentPosition = {
 type Equipment = {
   id: string;
   name: string;
+  category: string | null;
   iris_min: number | null;
   iris_max: number | null;
   front_sight_min: number | null;
@@ -33,9 +36,14 @@ type ShootingRange = {
 
 type Program = {
   id: string;
+  scoring_type: ScoringType;
   shot_mode: "fixed" | "free";
   planned_shots: number | null;
 };
+
+function isRifleEquipment(item: Equipment | undefined) {
+  return ((item?.category ?? "") + " " + (item?.name ?? "")).toLowerCase().includes("gewehr");
+}
 
 function localDateTimeNow() {
   const now = new Date();
@@ -80,6 +88,7 @@ export default function NewTrainingPage() {
 
   const [programMode, setProgramMode] =
     useState<"fixed" | "free">("fixed");
+  const [programScoringType, setProgramScoringType] = useState<ScoringType>("A10");
   const [programShots, setProgramShots] = useState(6);
   const [programs, setPrograms] = useState<Program[]>([]);
 
@@ -121,6 +130,7 @@ export default function NewTrainingPage() {
         .select(`
           id,
           name,
+          category,
           iris_min,
           iris_max,
           front_sight_min,
@@ -260,6 +270,9 @@ export default function NewTrainingPage() {
     (item) => item.id === equipmentId
   );
 
+  const isRifle = isRifleEquipment(selectedEquipment);
+  const effectiveProgramScoringType: ScoringType = isRifle ? programScoringType : "A10";
+
   const availableDistances =
     selectedEquipment?.equipment_distances ?? [];
 
@@ -286,6 +299,11 @@ export default function NewTrainingPage() {
     const newEquipment = equipment.find(
       (item) => item.id === newEquipmentId
     );
+
+    if (!isRifleEquipment(newEquipment)) {
+      setProgramScoringType("A10");
+      setPrograms((current) => current.map((program) => ({ ...program, scoring_type: "A10" })));
+    }
 
     if (!newEquipment) {
       setSelectedDistance(null);
@@ -316,6 +334,7 @@ export default function NewTrainingPage() {
       ...current,
       {
         id: crypto.randomUUID(),
+        scoring_type: effectiveProgramScoringType,
         shot_mode: programMode,
         planned_shots: programMode === "fixed" ? programShots : null,
       },
@@ -329,6 +348,7 @@ export default function NewTrainingPage() {
       ...current,
       {
         id: crypto.randomUUID(),
+        scoring_type: effectiveProgramScoringType,
         shot_mode: "fixed",
         planned_shots: shots,
       },
@@ -436,6 +456,7 @@ export default function NewTrainingPage() {
       training_session_id: session.id,
       sort_order: index + 1,
       shot_mode: program.shot_mode,
+      scoring_type: isRifle ? program.scoring_type : "A10",
       planned_shots: program.planned_shots,
       status: "open",
     }));
@@ -785,6 +806,18 @@ export default function NewTrainingPage() {
             Training kannst du jedes offene Programm frei auswählen.
           </p>
 
+          {isRifle && (
+            <div className="mt-5 max-w-xs">
+              <label htmlFor="programScoringType" className="mb-2 block text-sm font-medium text-slate-700">Wertung für neue Programme</label>
+              <select id="programScoringType" value={effectiveProgramScoringType}
+                onChange={(event) => setProgramScoringType(event.target.value as ScoringType)}
+                className="w-full rounded-lg border border-slate-300 bg-white px-4 py-3 text-slate-900">
+                <option value="A10">A10</option><option value="A100">A100</option><option value="A5">A5</option>
+              </select>
+              <p className="mt-1 text-xs text-slate-500">Gilt auch für die Schnellwahl. Du kannst die Wertung danach pro Programm ändern.</p>
+            </div>
+          )}
+
           <div className="mt-5 flex flex-wrap gap-2">
             {[6, 10, 20].map((shots) => (
               <button
@@ -804,6 +837,7 @@ export default function NewTrainingPage() {
                   ...current,
                   {
                     id: crypto.randomUUID(),
+        scoring_type: effectiveProgramScoringType,
                     shot_mode: "free",
                     planned_shots: null,
                   },
@@ -879,7 +913,7 @@ export default function NewTrainingPage() {
               {programs.map((program, index) => (
                 <div
                   key={program.id}
-                  className="flex items-center justify-between gap-4 rounded-xl bg-slate-50 px-4 py-4"
+                  className="flex flex-wrap items-center justify-between gap-4 rounded-xl bg-slate-50 px-4 py-4"
                 >
                   <div className="flex min-w-0 items-center gap-3">
                     <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-white text-sm font-bold text-slate-700">
@@ -892,6 +926,20 @@ export default function NewTrainingPage() {
                           ? "Freies Training"
                           : `${program.planned_shots} Schuss`}
                       </p>
+                      {isRifle ? (
+                        <label className="mt-2 block text-sm text-slate-600">
+                          Wertung
+                          <select aria-label={`Wertung für Programm ${index + 1}`}
+                            value={program.scoring_type}
+                            onChange={(event) => {
+                              const scoring_type = event.target.value as ScoringType;
+                              setPrograms((current) => current.map((item) => item.id === program.id ? { ...item, scoring_type } : item));
+                            }}
+                            className="ml-2 rounded-lg border border-slate-300 bg-white px-3 py-2 text-slate-900">
+                            <option value="A10">A10</option><option value="A100">A100</option><option value="A5">A5</option>
+                          </select>
+                        </label>
+                      ) : <p className="mt-1 text-sm text-slate-500">A10</p>}
                     </div>
                   </div>
 
