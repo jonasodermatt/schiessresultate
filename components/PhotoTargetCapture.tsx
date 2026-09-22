@@ -30,9 +30,24 @@ type ImagePoint = {
 
 type PhotoMarker = ImagePoint & {
   id: string;
+  color: string;
+  detectionResponse?: number;
+  nearestDistancePx?: number | null;
+  clusterNeighbors?: number;
+  detectionSource?: "hole" | "damage";
 };
 
 const SCORING_RADIUS_ON_TARGET = 114 / 200;
+
+const SHOT_COLORS = [
+  "#dc2626", // rot
+  "#2563eb", // blau
+  "#16a34a", // grün
+  "#ea580c", // orange
+  "#9333ea", // violett
+] as const;
+
+const MAX_PHOTO_SHOTS = 5;
 
 export default function PhotoTargetCapture({
   onImport,
@@ -230,13 +245,26 @@ export default function PhotoTargetCapture({
       return;
     }
 
-    setMarkers((current) => [
-      ...current,
-      {
-        id: crypto.randomUUID(),
-        ...point,
-      },
-    ]);
+    setMarkers((current) => {
+      if (current.length >= MAX_PHOTO_SHOTS) {
+        setAnalysisMessage(
+          `Pro Foto können maximal ${MAX_PHOTO_SHOTS} Treffer erfasst werden.`
+        );
+        return current;
+      }
+
+      return [
+        ...current,
+        {
+          id: crypto.randomUUID(),
+          ...point,
+          color:
+            SHOT_COLORS.find(
+              (color) => !current.some((marker) => marker.color === color)
+            ) ?? SHOT_COLORS[current.length % SHOT_COLORS.length],
+        },
+      ];
+    });
   }
 
   function moveMarker(
@@ -673,6 +701,7 @@ export default function PhotoTargetCapture({
         x: number;
         y: number;
         area: number;
+        source?: "hole" | "damage";
       };
 
       const candidates: ShotCandidate[] = [];
@@ -708,6 +737,29 @@ export default function PhotoTargetCapture({
             (ellipseY * ellipseY) / (scoringRadiusY * scoringRadiusY)
           );
           if (scoringDistance > 1.02) continue;
+
+          // Armbrust 30 m: Die Wertungsringe liegen in konstanten 6-mm-Abständen.
+          // Bezogen auf den 57-mm-Radius des 1er-Rings sind das Schritte von 6/57.
+          // Ein Kandidat direkt auf einer solchen bekannten Drucklinie ist
+          // verdächtig, darf aber nicht pauschal verworfen werden: Ein echter
+          // Treffer kann selbstverständlich ebenfalls eine Ringlinie schneiden.
+          const ringStepNormalized = 6 / 57;
+          let nearestRingDistance = Number.POSITIVE_INFINITY;
+          for (let ring = 1; ring <= 9; ring++) {
+            const ringRadiusNormalized = ring * ringStepNormalized;
+            nearestRingDistance = Math.min(
+              nearestRingDistance,
+              Math.abs(scoringDistance - ringRadiusNormalized)
+            );
+          }
+
+          // Die Linienbreite selbst ist sehr klein. Wegen Perspektive,
+          // Interpolation und Fotoauflösung verwenden wir eine tolerante Zone,
+          // ungefähr im Bereich eines kleinen Bruchteils des Schusslochdurchmessers.
+          const holeDiameterNormalized =
+            expectedHoleDiameter / Math.sqrt(scoringRadiusX * scoringRadiusY);
+          const nearKnownRing =
+            nearestRingDistance <= Math.max(0.008, holeDiameterNormalized * 0.18);
 
           const neighborhoodMean = localMean(x, y, localWindowRadius);
 
@@ -786,16 +838,59 @@ export default function PhotoTargetCapture({
           let occupiedSectors = 0;
           const sectorCount = 8;
           const samplesPerSector = angularSamples / sectorCount;
+          const sectorStrengths: number[] = [];
+
           for (let sector = 0; sector < sectorCount; sector++) {
             let sectorMatches = 0;
+            let sectorStrength = 0;
+
             for (let i = 0; i < samplesPerSector; i++) {
               const sampleIndex = sector * samplesPerSector + i;
+              sectorStrength += edgeStrengths[sampleIndex];
+
               if (edgeStrengths[sampleIndex] >= adaptiveThreshold) {
                 sectorMatches++;
               }
             }
+
+            sectorStrengths.push(sectorStrength / samplesPerSector);
             if (sectorMatches >= 1) occupiedSectors++;
           }
+
+          // Abrisskanten des Papiers erzeugen oft auf einer Seite sehr starke
+          // Kanten, auf der Gegenseite aber kaum etwas. Ein echtes Schussloch
+          // muss nicht perfekt rund sein, sollte jedoch rund um sein Zentrum
+          // ausreichend Struktur besitzen.
+          const sortedSectorStrengths = [...sectorStrengths].sort(
+            (a, b) => a - b
+          );
+          const weakSectorMean =
+            (sortedSectorStrengths[0] +
+              sortedSectorStrengths[1] +
+              sortedSectorStrengths[2]) /
+            3;
+          const strongSectorMean =
+            (sortedSectorStrengths[5] +
+              sortedSectorStrengths[6] +
+              sortedSectorStrengths[7]) /
+            3;
+          const edgeBalance =
+            strongSectorMean > 0 ? weakSectorMean / strongSectorMean : 0;
+
+          // Gedruckte Ringlinien/Ziffern sind häufig richtungsbetont:
+          // wenige Sektoren tragen einen überproportional grossen Teil der
+          // Kantenenergie. Ein Loch ist trotz Ausfransung typischerweise
+          // rundum verteilt.
+          const totalSectorStrength = sectorStrengths.reduce(
+            (sum, value) => sum + value,
+            0
+          );
+          const strongestTwoShare =
+            totalSectorStrength > 0
+              ? (sortedSectorStrengths[6] + sortedSectorStrengths[7]) /
+                totalSectorStrength
+              : 1;
+          const lineLikeStructure = strongestTwoShare >= 0.42;
 
           let oppositePairs = 0;
           for (let sample = 0; sample < angularSamples / 2; sample++) {
@@ -813,29 +908,233 @@ export default function PhotoTargetCapture({
           const localContrast = Math.abs(coreMean - neighborhoodMean);
           const averageEdgeStrength = totalEdgeStrength / angularSamples;
 
+          // v3: Lange gedruckte Linien erzeugen ebenfalls viele starke Kanten.
+          // Bei einer Linie unterscheiden sich jedoch die beiden Seiten des
+          // Kandidaten deutlich voneinander. Rund um ein echtes Loch ist der
+          // Hintergrund ausserhalb des Lochs wesentlich gleichmässiger.
+          const outerContextValues: number[] = [];
+          for (let sample = 0; sample < 16; sample++) {
+            const angle = (sample / 16) * Math.PI * 2;
+            outerContextValues.push(
+              sampleGray(
+                x + Math.cos(angle) * holeRadius * 1.65,
+                y + Math.sin(angle) * holeRadius * 1.65
+              )
+            );
+          }
+          const outerContextMean =
+            outerContextValues.reduce((sum, value) => sum + value, 0) /
+            outerContextValues.length;
+          const outerContextDeviation = Math.sqrt(
+            outerContextValues.reduce(
+              (sum, value) => sum + (value - outerContextMean) ** 2,
+              0
+            ) / outerContextValues.length
+          );
+
+          // Besonders problematisch war in v2 der Übergang vom schwarzen
+          // 3er-Feld zum weissen 2er-Feld. Die gestrigen Testbilder erzeugten
+          // dort fast alle falschen Kandidaten. In diesem bekannten Band
+          // verlangen wir deshalb einen deutlich homogeneren Aussenbereich.
+          const blackBoundaryDistance = 90 / 114;
+          const nearBlackBoundary =
+            Math.abs(scoringDistance - blackBoundaryDistance) <=
+            Math.max(0.025, (expectedHoleDiameter / Math.sqrt(scoringRadiusX * scoringRadiusY)) * 0.9);
+
+          if (outerContextDeviation > (nearBlackBoundary ? 30 : 48)) {
+            continue;
+          }
+
           if (
             edgeMatches >= 11 &&
             strongEdgeMatches >= 3 &&
             occupiedSectors >= 6 &&
             oppositePairs >= 3 &&
+            edgeBalance >= 0.16 &&
             (averageEdgeStrength >= 20 || localContrast >= 18)
           ) {
+            // Bekannte Druckstruktur nicht einfach löschen, sondern abwerten.
+            // Nur wenn Ringnähe UND eine deutlich richtungsbetonte Struktur
+            // zusammenkommen, gibt es eine starke Strafe. Damit bleiben echte
+            // Treffer auf Ringlinien grundsätzlich möglich.
+            const printStructurePenalty =
+              nearKnownRing && lineLikeStructure
+                ? 34
+                : nearKnownRing
+                  ? 10
+                  : lineLikeStructure
+                    ? 8
+                    : 0;
+
             const response =
               edgeMatches * 2 +
               strongEdgeMatches * 2.5 +
               occupiedSectors * 3 +
               oppositePairs * 1.5 +
               averageEdgeStrength * 0.35 +
-              localContrast * 0.25 -
-              coreDeviation * 0.15;
+              localContrast * 0.25 +
+              edgeBalance * 18 -
+              coreDeviation * 0.15 -
+              outerContextDeviation * 0.2 -
+              printStructurePenalty;
 
             candidates.push({
               x,
               y,
               area: response,
+              source: "hole",
             });
           }
         }
+      }
+
+      // v8 – zweiter Erkennungsweg: stark beschädigtes / ausgerissenes Papier.
+      //
+      // Bei solchen Treffern fehlt oft die annähernd geschlossene 6-mm-Kante,
+      // auf die der klassische Detektor angewiesen ist. Wir suchen deshalb
+      // zusätzlich nach lokalen Flächen, die sich deutlich und über mehrere
+      // Richtungen vom unmittelbaren Scheibenuntergrund unterscheiden.
+      //
+      // Wichtig: Dieser Detektor erzeugt nur zusätzliche KANDIDATEN. Erst bei
+      // der späteren Zusammenführung wird entschieden, ob daraus wirklich ein
+      // zusätzlicher Treffer wird.
+      const damageCandidates: ShotCandidate[] = [];
+      const damageScanStep = Math.max(2, Math.round(expectedHoleDiameter / 4));
+      const damageInnerRadius = holeRadius * 0.75;
+      const damageOuterRadius = holeRadius * 1.8;
+      const damageAngles = 16;
+
+      for (
+        let y = Math.max(3, Math.floor(blackCenterY - scoringRadiusY));
+        y <= Math.min(height - 4, Math.ceil(blackCenterY + scoringRadiusY));
+        y += damageScanStep
+      ) {
+        for (
+          let x = Math.max(3, Math.floor(blackCenterX - scoringRadiusX));
+          x <= Math.min(width - 4, Math.ceil(blackCenterX + scoringRadiusX));
+          x += damageScanStep
+        ) {
+          const dxFromCenter = x - blackCenterX;
+          const dyFromCenter = y - blackCenterY;
+          const ellipseX =
+            Math.cos(ellipseAngle) * dxFromCenter +
+            Math.sin(ellipseAngle) * dyFromCenter;
+          const ellipseY =
+            -Math.sin(ellipseAngle) * dxFromCenter +
+            Math.cos(ellipseAngle) * dyFromCenter;
+          const scoringDistance = Math.sqrt(
+            (ellipseX * ellipseX) / (scoringRadiusX * scoringRadiusX) +
+            (ellipseY * ellipseY) / (scoringRadiusY * scoringRadiusY)
+          );
+          if (scoringDistance > 1.02) continue;
+
+          const innerValues: number[] = [];
+          const outerValues: number[] = [];
+
+          for (let sample = 0; sample < damageAngles; sample++) {
+            const angle = (sample / damageAngles) * Math.PI * 2;
+            const cos = Math.cos(angle);
+            const sin = Math.sin(angle);
+
+            innerValues.push(
+              sampleGray(
+                x + cos * damageInnerRadius,
+                y + sin * damageInnerRadius
+              )
+            );
+            outerValues.push(
+              sampleGray(
+                x + cos * damageOuterRadius,
+                y + sin * damageOuterRadius
+              )
+            );
+          }
+
+          // Zentrum ebenfalls einbeziehen – bei ausgerissenem Papier ist der
+          // Kern oft sehr hell, sehr dunkel oder stark unruhig.
+          innerValues.push(sampleGray(x, y));
+
+          const innerMean =
+            innerValues.reduce((sum, value) => sum + value, 0) /
+            innerValues.length;
+          const outerMean =
+            outerValues.reduce((sum, value) => sum + value, 0) /
+            outerValues.length;
+
+          const innerDeviation = Math.sqrt(
+            innerValues.reduce(
+              (sum, value) => sum + (value - innerMean) ** 2,
+              0
+            ) / innerValues.length
+          );
+          const outerDeviation = Math.sqrt(
+            outerValues.reduce(
+              (sum, value) => sum + (value - outerMean) ** 2,
+              0
+            ) / outerValues.length
+          );
+
+          const meanDifference = Math.abs(innerMean - outerMean);
+
+          // Wie viele Richtungen zeigen tatsächlich eine deutliche Abweichung?
+          // Eine einzelne Ringlinie/Ziffer soll nicht reichen.
+          let changedDirections = 0;
+          let strongChangedDirections = 0;
+          let directionalDifferenceSum = 0;
+
+          for (let i = 0; i < damageAngles; i++) {
+            const difference = Math.abs(innerValues[i] - outerValues[i]);
+            directionalDifferenceSum += difference;
+            if (difference >= 20) changedDirections++;
+            if (difference >= 34) strongChangedDirections++;
+          }
+
+          const directionalDifference =
+            directionalDifferenceSum / damageAngles;
+
+          // Intakter Scheibendruck kann lokal kontrastreich sein, ist aber
+          // normalerweise entweder richtungsgebunden oder im Innern relativ
+          // homogen. Ausgerissenes Papier kombiniert Flächenabweichung und
+          // innere Unruhe.
+          const damageEvidence =
+            meanDifference * 0.9 +
+            directionalDifference * 0.8 +
+            innerDeviation * 0.7 +
+            changedDirections * 1.8 +
+            strongChangedDirections * 1.4 -
+            outerDeviation * 0.35;
+
+          if (
+            changedDirections >= 8 &&
+            strongChangedDirections >= 3 &&
+            (meanDifference >= 16 || innerDeviation >= 28) &&
+            damageEvidence >= 58
+          ) {
+            damageCandidates.push({
+              x,
+              y,
+              area: damageEvidence,
+              source: "damage",
+            });
+          }
+        }
+      }
+
+      // Auch der Damage-Detektor erzeugt mehrere lokale Maxima innerhalb
+      // derselben Papierbeschädigung. Zunächst nur sehr nahe Duplikate entfernen.
+      damageCandidates.sort((a, b) => b.area - a.area);
+      const damageMaxima: ShotCandidate[] = [];
+      for (const candidate of damageCandidates) {
+        if (
+          damageMaxima.every(
+            (existing) =>
+              Math.hypot(existing.x - candidate.x, existing.y - candidate.y) >
+              expectedHoleDiameter * 0.7
+          )
+        ) {
+          damageMaxima.push(candidate);
+        }
+        if (damageMaxima.length >= 20) break;
       }
 
       // Lokales Maximum / Non-Maximum-Suppression: Rund um dasselbe Loch
@@ -858,30 +1157,190 @@ export default function PhotoTargetCapture({
       candidates.length = 0;
       candidates.push(...grayscaleCandidates);
 
-      candidates.sort((a, b) => b.area - a.area);
-      const merged: typeof candidates = [];
-      for (const candidate of candidates) {
+      // TESTVERSION:
+      // Nur Kandidaten innerhalb des 4er-Rings (Wertung 4 bis 10)
+      // weiterverarbeiten. So können wir prüfen, ob die vielen
+      // Fehlkandidaten hauptsächlich aus den äusseren Ringen stammen.
+      const innerCandidates = candidates.filter((candidate) => {
+        const dx = candidate.x - nextCenter.x * width;
+        const dy = candidate.y - nextCenter.y * height;
+        const ellipseAngle = (nextEllipseAngleDeg * Math.PI) / 180;
+
+        const ellipseX =
+          Math.cos(ellipseAngle) * dx + Math.sin(ellipseAngle) * dy;
+        const ellipseY =
+          -Math.sin(ellipseAngle) * dx + Math.cos(ellipseAngle) * dy;
+
+        const normalizedX = ellipseX / (nextRadius * width);
+        const normalizedY = -ellipseY / (nextRadiusY * height);
+
+        const angle = (-rotationDeg * Math.PI) / 180;
+        const alignedX =
+          Math.cos(angle) * normalizedX - Math.sin(angle) * normalizedY;
+        const alignedY =
+          Math.sin(angle) * normalizedX + Math.cos(angle) * normalizedY;
+
+        const targetX = alignedX * SCORING_RADIUS_ON_TARGET;
+        const targetY = alignedY * SCORING_RADIUS_ON_TARGET;
+
+        return scoreCrossbow30m(targetX, targetY) >= 4;
+      });
+
+      innerCandidates.sort((a, b) => b.area - a.area);
+
+      // v8 – Fusion der beiden Detektoren.
+      //
+      // Klassische Lochkandidaten bleiben die primäre Quelle. Damage-Kandidaten
+      // ergänzen nur dort, wo der klassische Detektor einen stark ausgerissenen
+      // Treffer wahrscheinlich übersehen hat.
+      const bestHoleResponse = innerCandidates[0]?.area ?? 0;
+      const minimumHoleResponse =
+        bestHoleResponse > 0
+          ? Math.max(24, bestHoleResponse * 0.52)
+          : Number.POSITIVE_INFINITY;
+
+      const qualifiedHoleCandidates = innerCandidates.filter(
+        (candidate) => candidate.area >= minimumHoleResponse
+      );
+
+      // Damage-Kandidaten ebenfalls auf den inneren Testbereich begrenzen.
+      const qualifiedDamageCandidates = damageMaxima.filter((candidate) => {
+        const dx = candidate.x - nextCenter.x * width;
+        const dy = candidate.y - nextCenter.y * height;
+        const ellipseAngleForScore =
+          (nextEllipseAngleDeg * Math.PI) / 180;
+
+        const ex =
+          Math.cos(ellipseAngleForScore) * dx +
+          Math.sin(ellipseAngleForScore) * dy;
+        const ey =
+          -Math.sin(ellipseAngleForScore) * dx +
+          Math.cos(ellipseAngleForScore) * dy;
+
+        const normalizedX = ex / (nextRadius * width);
+        const normalizedY = -ey / (nextRadiusY * height);
+
+        const targetAngle = (-rotationDeg * Math.PI) / 180;
+        const alignedX =
+          Math.cos(targetAngle) * normalizedX -
+          Math.sin(targetAngle) * normalizedY;
+        const alignedY =
+          Math.sin(targetAngle) * normalizedX +
+          Math.cos(targetAngle) * normalizedY;
+
+        return (
+          scoreCrossbow30m(
+            alignedX * SCORING_RADIUS_ON_TARGET,
+            alignedY * SCORING_RADIUS_ON_TARGET
+          ) >= 4
+        );
+      });
+
+      const merged: ShotCandidate[] = [];
+
+      // 1) Primäre Lochkandidaten.
+      for (const candidate of qualifiedHoleCandidates) {
+        const duplicateDistance = expectedHoleDiameter * 0.78;
+
         if (
-          merged.every(
+          merged.some(
             (existing) =>
-              Math.hypot(existing.x - candidate.x, existing.y - candidate.y) >
-              expectedHoleDiameter * 0.8
+              Math.hypot(existing.x - candidate.x, existing.y - candidate.y) <=
+              duplicateDistance
           )
         ) {
-          merged.push(candidate);
+          continue;
         }
-        if (merged.length >= 20) break;
+
+        // Nicht mehr versuchen, aus einem dichten Cluster allein anhand der
+        // Response-Werte weitere Zentren zu erfinden. Maximal drei klassische
+        // Kandidaten innerhalb eines kleinen Beschädigungsbereichs.
+        const closeNeighbors = merged.filter(
+          (existing) =>
+            Math.hypot(existing.x - candidate.x, existing.y - candidate.y) <
+            expectedHoleDiameter * 1.55
+        );
+
+        if (closeNeighbors.length >= 3) continue;
+
+        merged.push(candidate);
+        if (merged.length >= MAX_PHOTO_SHOTS) break;
       }
+
+      // 2) Damage-Kandidaten ergänzen.
+      //
+      // Ein Damage-Kandidat darf keinen bereits erkannten Treffer lediglich
+      // "verschieben". Er muss genügend weit von vorhandenen Zentren liegen.
+      // Dadurch können beim 5-Treffer-Testbild zusätzliche getrennte
+      // Papierausrisse hinzukommen, während ein enges 3-Treffer-Cluster nicht
+      // einfach auf fünf Punkte aufgefüllt wird.
+      if (merged.length < MAX_PHOTO_SHOTS && qualifiedDamageCandidates.length) {
+        const bestDamageResponse = qualifiedDamageCandidates[0]?.area ?? 0;
+        const minimumDamageResponse = Math.max(58, bestDamageResponse * 0.5);
+
+        for (const candidate of qualifiedDamageCandidates) {
+          if (candidate.area < minimumDamageResponse) continue;
+
+          const nearestExisting =
+            merged.length > 0
+              ? Math.min(
+                  ...merged.map((existing) =>
+                    Math.hypot(
+                      existing.x - candidate.x,
+                      existing.y - candidate.y
+                    )
+                  )
+                )
+              : Number.POSITIVE_INFINITY;
+
+          // Bei einem ausgerissenen Loch kann das geometrische Zentrum etwas
+          // ungenau sein. Trotzdem muss ein zusätzlicher Treffer klar vom
+          // bestehenden Zentrum getrennt sein.
+          if (nearestExisting <= expectedHoleDiameter * 1.05) continue;
+
+          // Damage-Kandidaten untereinander ebenfalls nicht mehrfach zählen.
+          const nearDamageAlreadyAdded = merged.some(
+            (existing) =>
+              existing.source === "damage" &&
+              Math.hypot(existing.x - candidate.x, existing.y - candidate.y) <=
+                expectedHoleDiameter * 1.15
+          );
+          if (nearDamageAlreadyAdded) continue;
+
+          merged.push(candidate);
+          if (merged.length >= MAX_PHOTO_SHOTS) break;
+        }
+      }
+
+      const markerDiagnostics = merged.map((candidate) => {
+        const distances = merged
+          .filter((other) => other !== candidate)
+          .map((other) =>
+            Math.hypot(other.x - candidate.x, other.y - candidate.y)
+          );
+
+        return {
+          detectionResponse: candidate.area,
+          nearestDistancePx:
+            distances.length > 0 ? Math.min(...distances) : null,
+          clusterNeighbors: distances.filter(
+            (distance) => distance < expectedHoleDiameter * 1.65
+          ).length,
+          detectionSource: candidate.source ?? "hole",
+        };
+      });
 
       setCenter(nextCenter);
       setRadius(nextRadius);
       setRadiusY(nextRadiusY);
       setEllipseAngleDeg(nextEllipseAngleDeg);
       setMarkers(
-        merged.map((candidate) => ({
+        merged.map((candidate, index) => ({
           id: crypto.randomUUID(),
           x: candidate.x / width,
           y: candidate.y / height,
+          color: SHOT_COLORS[index % SHOT_COLORS.length],
+          ...markerDiagnostics[index],
         }))
       );
       setCalibrationStep("shots");
@@ -975,7 +1434,7 @@ export default function PhotoTargetCapture({
         .insert({
           user_id: user.id,
           target_type: "crossbow30m",
-          detector_version: "crossbow30-v2-gray",
+          detector_version: "crossbow30-v8-hole-and-paper-damage",
           error_type: feedbackType,
           detected_shots: detectedShots.length,
           image_width: imageWidth,
@@ -985,10 +1444,15 @@ export default function PhotoTargetCapture({
           detected_radius_x: radius ?? null,
           detected_radius_y: radiusY ?? null,
           detected_ellipse_angle: ellipseAngleDeg,
-          detected_shot_data: detectedShots.map(({ shot }) => ({
+          detected_shot_data: detectedShots.map(({ marker, shot }) => ({
             x: shot.x,
             y: shot.y,
             score: shot.score,
+            color: marker.color,
+            detection_response: marker.detectionResponse ?? null,
+            nearest_distance_px: marker.nearestDistancePx ?? null,
+            cluster_neighbors: marker.clusterNeighbors ?? null,
+            detection_source: marker.detectionSource ?? null,
           })),
           image_path: uploadedPath,
         });
@@ -1059,6 +1523,7 @@ export default function PhotoTargetCapture({
         accept="image/*"
         capture="environment"
         className="hidden"
+        style={{ display: "none" }}
         onChange={(event) => selectPhoto(event.target.files?.[0])}
       />
 
@@ -1066,24 +1531,39 @@ export default function PhotoTargetCapture({
         <button
           type="button"
           onClick={() => fileInputRef.current?.click()}
-          className="mt-5 w-full rounded-lg bg-blue-600 px-4 py-3 font-semibold text-white hover:bg-blue-700"
+          className="mt-5 w-full rounded-lg px-4 py-3 font-semibold"
+          style={{
+            background: "#ffffff",
+            color: "#111827",
+            border: "1px solid #2a5797",
+            opacity: 1,
+          }}
         >
           Foto aufnehmen oder auswählen
         </button>
       ) : (
         <>
-          <div className="mt-4 rounded-lg bg-white p-3 text-center text-sm font-medium text-slate-700">
+          <div className="mt-4 rounded-lg border border-slate-300 bg-slate-100 p-3 text-center text-sm font-semibold text-slate-900">
             {analyzing ? "Foto wird analysiert …" : analysisMessage || instruction}
           </div>
 
           <div
-            ref={imageAreaRef}
-            onClick={handleImageClick}
-            className="relative mt-3 overflow-hidden rounded-lg bg-slate-900 touch-none select-none"
+            className="mt-3 overflow-auto rounded-lg"
+            style={{
+              background: "#111827",
+              padding: "8px",
+              maxWidth: "100%",
+            }}
           >
             <div
-              className="relative h-full w-full"
+              ref={imageAreaRef}
+              onClick={handleImageClick}
+              className="relative touch-none select-none"
               style={{
+                position: "relative",
+                width: "min(100%, 520px)",
+                margin: "0 auto",
+                lineHeight: 0,
                 transform: `rotate(${rotationDeg}deg)`,
                 transformOrigin: center
                   ? `${center.x * 100}% ${center.y * 100}%`
@@ -1095,84 +1575,121 @@ export default function PhotoTargetCapture({
                 src={photoUrl}
                 alt="Fotografierte Armbrustscheibe"
                 draggable={false}
-                className="block h-auto w-full"
                 onLoad={(event) => analyzePhoto(event.currentTarget)}
+                style={{
+                  display: "block",
+                  width: "100%",
+                  height: "auto",
+                  maxWidth: "100%",
+                }}
               />
 
-            {center && (
-              <div
-                className="pointer-events-none absolute z-10 h-3 w-3 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-white bg-blue-600"
-                style={{
-                  left: `${center.x * 100}%`,
-                  top: `${center.y * 100}%`,
-                }}
-              />
-            )}
+              {center && radius && radiusY && (
+                <div
+                  style={{
+                    pointerEvents: "none",
+                    position: "absolute",
+                    zIndex: 35,
+                    borderRadius: "9999px",
+                    border: "2px solid #60a5fa",
+                    left: `${center.x * 100}%`,
+                    top: `${center.y * 100}%`,
+                    width: `${radius * 200}%`,
+                    height: `${radiusY * 200}%`,
+                    transform: `translate(-50%, -50%) rotate(${ellipseAngleDeg}deg)`,
+                  }}
+                />
+              )}
 
-            {center && radius && radiusY && (
-              <div
-                className="pointer-events-none absolute z-10 rounded-full border-2 border-blue-400"
-                style={{
-                  left: `${center.x * 100}%`,
-                  top: `${center.y * 100}%`,
-                  width: `${radius * 200}%`,
-                  height: `${radiusY * 200}%`,
-                  transform: `translate(-50%, -50%) rotate(${ellipseAngleDeg}deg)`,
-                }}
-              />
-            )}
+              {markers.map((marker, index) => {
+                const markerColor = marker.color;
 
-            {markers.map((marker, index) => (
-              <button
-                key={marker.id}
-                type="button"
-                title={`Treffer ${
-                  detectedShots.findIndex(
-                    (item) => item.marker.id === marker.id
-                  ) + 1 || index + 1
-                }`}
-                onClick={(event) => event.stopPropagation()}
-                onPointerDown={(event) => {
-                  event.preventDefault();
-                  event.stopPropagation();
-                  draggingMarkerIdRef.current = marker.id;
-                  event.currentTarget.setPointerCapture(event.pointerId);
-                }}
-                onPointerMove={(event) => {
-                  if (draggingMarkerIdRef.current !== marker.id) return;
-                  event.preventDefault();
-                  moveMarker(marker.id, event.clientX, event.clientY);
-                }}
-                onPointerUp={(event) => {
-                  event.preventDefault();
-                  event.stopPropagation();
-                  draggingMarkerIdRef.current = null;
-                  if (event.currentTarget.hasPointerCapture(event.pointerId)) {
-                    event.currentTarget.releasePointerCapture(event.pointerId);
-                  }
-                }}
-                onPointerCancel={() => {
-                  draggingMarkerIdRef.current = null;
-                }}
-                className="absolute z-20 flex h-11 w-11 -translate-x-1/2 -translate-y-1/2 touch-none items-center justify-center rounded-full"
-                style={{
-                  left: `${marker.x * 100}%`,
-                  top: `${marker.y * 100}%`,
-                }}
-              >
-                <span className="flex h-6 w-6 items-center justify-center rounded-full border-2 border-white bg-red-600 text-xs font-bold text-white shadow">
-                  {detectedShots.findIndex(
-                    (item) => item.marker.id === marker.id
-                  ) + 1 || index + 1}
-                </span>
-              </button>
-            ))}
+                return (
+                  <button
+                    key={marker.id}
+                    type="button"
+                    title={`Treffer ${index + 1}`}
+                    onClick={(event) => event.stopPropagation()}
+                    onPointerDown={(event) => {
+                      event.preventDefault();
+                      event.stopPropagation();
+                      draggingMarkerIdRef.current = marker.id;
+                      event.currentTarget.setPointerCapture(event.pointerId);
+                    }}
+                    onPointerMove={(event) => {
+                      if (draggingMarkerIdRef.current !== marker.id) return;
+                      event.preventDefault();
+                      moveMarker(marker.id, event.clientX, event.clientY);
+                    }}
+                    onPointerUp={(event) => {
+                      event.preventDefault();
+                      event.stopPropagation();
+                      draggingMarkerIdRef.current = null;
+                      if (
+                        event.currentTarget.hasPointerCapture(event.pointerId)
+                      ) {
+                        event.currentTarget.releasePointerCapture(
+                          event.pointerId
+                        );
+                      }
+                    }}
+                    onPointerCancel={() => {
+                      draggingMarkerIdRef.current = null;
+                    }}
+                    style={{
+                      position: "absolute",
+                      zIndex: 100,
+                      left: `${marker.x * 100}%`,
+                      top: `${marker.y * 100}%`,
+                      width: 28,
+                      height: 28,
+                      transform: "translate(-50%, -50%)",
+                      border: 0,
+                      background: "transparent",
+                      padding: 0,
+                      cursor: "grab",
+                    }}
+                  >
+                    <span
+                      style={{
+                        position: "absolute",
+                        left: "50%",
+                        top: "50%",
+                        width: 10,
+                        height: 10,
+                        transform: "translate(-50%, -50%)",
+                        borderRadius: "9999px",
+                        background: markerColor,
+                        boxShadow:
+                          "0 0 0 2px rgba(255,255,255,0.95), 0 1px 4px rgba(0,0,0,0.65)",
+                      }}
+                    />
+                  </button>
+                );
+              })}
+
+              {center && radius && (
+                <div
+                  style={{
+                    pointerEvents: "none",
+                    position: "absolute",
+                    zIndex: 110,
+                    left: "50%",
+                    top: 8,
+                    transform: "translateX(-50%)",
+                    borderRadius: 6,
+                    background: "#fbbf24",
+                    color: "#111827",
+                    padding: "4px 8px",
+                    fontSize: 12,
+                    fontWeight: 800,
+                    lineHeight: 1.2,
+                  }}
+                >
+                  OBEN
+                </div>
+              )}
             </div>
-            {center && radius && (
-              <div className="pointer-events-none absolute left-1/2 top-2 z-30 -translate-x-1/2 rounded bg-amber-400 px-2 py-1 text-xs font-bold text-slate-900 shadow">
-                OBEN
-              </div>
-            )}
           </div>
 
           <div className="mt-4 flex flex-wrap gap-2">
@@ -1180,7 +1697,13 @@ export default function PhotoTargetCapture({
               type="button"
               onClick={() => setRotationDeg((value) => value - 90)}
               disabled={!radius}
-              className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700 disabled:opacity-40"
+              className="rounded-lg border border-blue-700 bg-blue-50 px-3 py-2 text-sm font-semibold text-blue-900 hover:bg-blue-100 disabled:border-slate-300 disabled:bg-slate-100 disabled:text-slate-500"
+              style={{
+                background: "#eef4fb",
+                color: "#163a66",
+                border: "1px solid #2a5797",
+                opacity: 1,
+              }}
             >
               ↶ 90°
             </button>
@@ -1188,21 +1711,39 @@ export default function PhotoTargetCapture({
               type="button"
               onClick={() => setRotationDeg((value) => value + 90)}
               disabled={!radius}
-              className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700 disabled:opacity-40"
+              className="rounded-lg border border-blue-700 bg-blue-50 px-3 py-2 text-sm font-semibold text-blue-900 hover:bg-blue-100 disabled:border-slate-300 disabled:bg-slate-100 disabled:text-slate-500"
+              style={{
+                background: "#eef4fb",
+                color: "#163a66",
+                border: "1px solid #2a5797",
+                opacity: 1,
+              }}
             >
               ↷ 90°
             </button>
             <button
               type="button"
               onClick={resetCalibration}
-              className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700"
+              className="rounded-lg border border-blue-700 bg-blue-50 px-3 py-2 text-sm font-semibold text-blue-900 hover:bg-blue-100"
+              style={{
+                background: "#eef4fb",
+                color: "#163a66",
+                border: "1px solid #2a5797",
+                opacity: 1,
+              }}
             >
               Ausrichtung neu setzen
             </button>
             <button
               type="button"
               onClick={() => fileInputRef.current?.click()}
-              className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700"
+              className="rounded-lg border border-blue-700 bg-blue-50 px-3 py-2 text-sm font-semibold text-blue-900 hover:bg-blue-100"
+              style={{
+                background: "#eef4fb",
+                color: "#163a66",
+                border: "1px solid #2a5797",
+                opacity: 1,
+              }}
             >
               Anderes Foto
             </button>
@@ -1223,7 +1764,7 @@ export default function PhotoTargetCapture({
             </label>
           )}
 
-          <div className="mt-4 rounded-lg border border-slate-200 bg-white p-4">
+          <div className="mt-4 rounded-lg border border-slate-300 bg-slate-100 p-4">
             {!feedbackOpen ? (
               <button
                 type="button"
@@ -1231,7 +1772,8 @@ export default function PhotoTargetCapture({
                   setFeedbackOpen(true);
                   setFeedbackMessage("");
                 }}
-                className="text-sm font-semibold text-slate-700 hover:text-slate-900"
+                className="text-sm font-semibold"
+                style={{ color: "#111827", opacity: 1 }}
               >
                 ⚑ Erkennung fehlerhaft?
               </button>
@@ -1322,32 +1864,70 @@ export default function PhotoTargetCapture({
           </div>
 
           {detectedShots.length > 0 && (
-            <div className="mt-4 rounded-lg bg-white p-4">
+            <div className="mt-4 rounded-lg border border-slate-300 bg-slate-100 p-4">
               <p className="font-semibold text-slate-900">
                 Erkannte Treffer: {detectedShots.length}
               </p>
               <div className="mt-3 flex flex-wrap gap-2">
-                {detectedShots.map(({ marker, shot }, index) => (
-                  <button
-                    key={marker.id}
-                    type="button"
-                    onClick={() =>
-                      setMarkers((current) =>
-                        current.filter((item) => item.id !== marker.id)
-                      )
-                    }
-                    className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-800"
-                    title="Treffer entfernen"
-                  >
-                    {index + 1}: {shot.score} Punkte ×
-                  </button>
-                ))}
+                {detectedShots.map(({ marker, shot }, index) => {
+                  const markerColor = marker.color;
+
+                  return (
+                    <button
+                      key={marker.id}
+                      type="button"
+                      onClick={() =>
+                        setMarkers((current) =>
+                          current.filter((item) => item.id !== marker.id)
+                        )
+                      }
+                      className="rounded-lg px-3 py-2 text-sm font-semibold"
+                      style={{
+                        background: markerColor,
+                        color: "#ffffff",
+                        border: `1px solid ${markerColor}`,
+                        opacity: 1,
+                      }}
+                      title="Treffer entfernen"
+                    >
+                      <span style={{ display: "block" }}>
+                        {shot.score} Punkte ×
+                      </span>
+                      <span
+                        style={{
+                          display: "block",
+                          marginTop: 2,
+                          fontSize: 10,
+                          fontWeight: 500,
+                          whiteSpace: "nowrap",
+                        }}
+                      >
+                        Q {marker.detectionResponse?.toFixed(1) ?? "manuell"}
+                        {marker.nearestDistancePx != null
+                          ? ` · Abstand ${marker.nearestDistancePx.toFixed(1)} px`
+                          : ""}
+                        {marker.clusterNeighbors != null
+                          ? ` · Cluster ${marker.clusterNeighbors}`
+                          : ""}
+                        {marker.detectionSource
+                          ? ` · ${marker.detectionSource === "damage" ? "Damage" : "Loch"}`
+                          : ""}
+                      </span>
+                    </button>
+                  );
+                })}
               </div>
 
               <button
                 type="button"
                 onClick={() => onImport(detectedShots.map((item) => item.shot))}
-                className="mt-4 w-full rounded-lg bg-red-600 px-4 py-3 font-semibold text-white hover:bg-red-700"
+                className="mt-4 w-full rounded-lg px-4 py-3 font-semibold"
+                style={{
+                  background: "#dc2626",
+                  color: "#ffffff",
+                  border: "1px solid #b91c1c",
+                  opacity: 1,
+                }}
               >
                 {detectedShots.length} Treffer übernehmen
               </button>

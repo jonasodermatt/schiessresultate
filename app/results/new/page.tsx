@@ -1280,19 +1280,7 @@ router.push("/results");
     </button>
   )}
 </div>
-{isRifle && (
-  <div className="mb-5">
-    <label htmlFor="scoringType" className="mb-2 block text-sm font-medium text-slate-700">Wertungsart</label>
-    <select id="scoringType" value={effectiveScoringType} disabled={isTrainingMode}
-      onChange={(event) => changeScoringType(event.target.value as ScoringType)}
-      className="w-full rounded-lg border border-slate-300 bg-white px-4 py-3 text-slate-900">
-      <option value="A10">A10</option>
-      <option value="A100">A100</option>
-      <option value="A5">A5</option>
-    </select>
-    {isTrainingMode && <p className="mt-1 text-xs text-slate-500">Wertung aus dem gewählten Trainingsprogramm.</p>}
-  </div>
-)}
+
 {showResultDetails && (
   <>
     <div className="grid gap-5 md:grid-cols-2">
@@ -1322,6 +1310,8 @@ router.push("/results");
           ))}
         </select>
       </div>
+
+
 
       <div>
         <label
@@ -1394,6 +1384,20 @@ router.push("/results");
           ))}
         </select>
       </div>
+
+      {isRifle && (
+  <div className="mb-5">
+    <label htmlFor="scoringType" className="mb-2 block text-sm font-medium text-slate-700">Wertungsart</label>
+    <select id="scoringType" value={effectiveScoringType} disabled={isTrainingMode}
+      onChange={(event) => changeScoringType(event.target.value as ScoringType)}
+      className="w-full rounded-lg border border-slate-300 bg-white px-4 py-3 text-slate-900">
+      <option value="A10">A10</option>
+      <option value="A100">A100</option>
+      <option value="A5">A5</option>
+    </select>
+    {isTrainingMode && <p className="mt-1 text-xs text-slate-500">Wertung aus dem gewählten Trainingsprogramm.</p>}
+  </div>
+)}
 
       <div>
         <label className="mb-2 block text-sm font-medium text-slate-700">
@@ -1661,7 +1665,12 @@ router.push("/results");
       <button
         type="button"
         onClick={() => setShowPhotoCapture(true)}
-        className="w-full rounded-lg border border-blue-300 bg-blue-50 px-4 py-3 font-semibold text-blue-700 hover:bg-blue-100"
+        className="w-full rounded-lg px-4 py-3 font-semibold"
+style={{
+  backgroundColor: "#eff6ff",
+  color: "#000000",
+  border: "1px solid #000000",
+}}
       >
         📷 Treffer aus Foto erfassen
       </button>
