@@ -15,6 +15,13 @@ type Result = {
   average_score: number;
 };
 
+type ShootingEvent = {
+  id: string;
+  name: string;
+  event_date: string;
+  status: string;
+};
+
 export default function DashboardPage() {
   const router = useRouter();
   const { language, locale } = useI18n();
@@ -33,6 +40,7 @@ export default function DashboardPage() {
   const [averageResultCount, setAverageResultCount] = useState(0);
   const [bestResult, setBestResult] = useState<Result | null>(null);
   const [latestResult, setLatestResult] = useState<Result | null>(null);
+  const [shootingEvents, setShootingEvents] = useState<ShootingEvent[]>([]);
 
   useEffect(() => {
     async function loadDashboard() {
@@ -89,6 +97,21 @@ export default function DashboardPage() {
 
       setBestResult(best);
       setLatestResult(results[0] ?? null);
+
+      const { data: eventData, error: eventError } = await supabase
+        .from("shooting_events")
+        .select("id, name, event_date, status")
+        .order("event_date", { ascending: false });
+
+      if (eventError) {
+        console.error(
+          "Fehler beim Laden der Schiessanlässe:",
+          eventError.message
+        );
+      } else {
+        setShootingEvents((eventData ?? []) as ShootingEvent[]);
+      }
+
       setLoading(false);
     }
 
@@ -178,6 +201,80 @@ export default function DashboardPage() {
             <p className="mt-2 text-sm text-slate-600">Schiessstände suchen, favorisieren und verwalten.</p>
           </Link>
         </section>
+
+        {shootingEvents.length > 0 && (
+          <section className="mt-8">
+            <div className="mb-4">
+              <h2 className="text-xl font-bold text-slate-900">
+                Schiessanlässe
+              </h2>
+              <p className="mt-1 text-sm text-slate-600">
+                Anmeldung, Resultaterfassung und Ranglisten verwalten.
+              </p>
+            </div>
+
+            <div className="grid gap-4">
+              {shootingEvents.map((shootingEvent) => (
+                <div
+                  key={shootingEvent.id}
+                  className="rounded-2xl border bg-white p-6 shadow-sm"
+                >
+                  <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+                    <div>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <h3 className="text-xl font-bold text-slate-900">
+                          {shootingEvent.name}
+                        </h3>
+
+                        <span className="rounded-full bg-slate-100 px-2 py-1 text-xs font-semibold text-slate-600">
+                          {shootingEvent.status === "completed"
+                            ? "Abgeschlossen"
+                            : shootingEvent.status === "open"
+                              ? "Offen"
+                              : "Entwurf"}
+                        </span>
+                      </div>
+
+                      <p className="mt-1 text-sm text-slate-600">
+                        {formatDate(shootingEvent.event_date)}
+                      </p>
+                    </div>
+
+                    <div className="flex flex-wrap gap-2">
+                      <Link
+                        href={`/shooting-events/${shootingEvent.id}`}
+                        className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-900 hover:bg-slate-50"
+                      >
+                        Übersicht
+                      </Link>
+
+                      <Link
+                        href={`/shooting-events/${shootingEvent.id}/registration`}
+                        className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-900 hover:bg-slate-50"
+                      >
+                        Anmeldung
+                      </Link>
+
+                      <Link
+                        href={`/shooting-events/${shootingEvent.id}/capture`}
+                        className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-900 hover:bg-slate-50"
+                      >
+                        Erfassung
+                      </Link>
+
+                      <Link
+                        href={`/shooting-events/${shootingEvent.id}/rankings`}
+                        className="rounded-lg bg-red-600 px-4 py-2 text-sm font-semibold text-white hover:bg-red-700"
+                      >
+                        Ranglisten
+                      </Link>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </section>
+        )}
 
         <section className="mt-8 grid gap-4 md:grid-cols-3">
           <div className="rounded-2xl border bg-white p-6">

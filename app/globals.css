@@ -1,8 +1,19 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --background: #f8fafc;
+  --foreground: #0f172a;
+
+  --easy-red: #dc2626;
+  --easy-red-hover: #b91c1c;
+
+  --easy-border: #cbd5e1;
+  --easy-text: #0f172a;
+  --easy-text-secondary: #475569;
+  --easy-muted: #64748b;
+
+  --easy-white: #ffffff;
+  --easy-disabled: #f1f5f9;
 }
 
 @theme inline {
@@ -12,15 +23,169 @@
   --font-mono: var(--font-geist-mono);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+/*
+ * EasyShooter verwendet bewusst ein helles Erscheinungsbild.
+ * Dadurch ändern Browser-/System-Dark-Modes nicht plötzlich
+ * Schrift-, Button- oder Formularfarben.
+ */
+html {
+  color-scheme: light;
 }
 
 body {
+  margin: 0;
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-geist-sans), Arial, Helvetica, sans-serif;
+}
+
+/* ---------------------------------------------------------
+   BUTTONS
+   --------------------------------------------------------- */
+
+.btn-primary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--easy-red);
+  border-radius: 0.5rem;
+  background-color: var(--easy-red);
+  color: #ffffff;
+  padding: 0.75rem 1rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  line-height: 1.25rem;
+  cursor: pointer;
+  transition:
+    background-color 150ms ease,
+    border-color 150ms ease,
+    opacity 150ms ease;
+}
+
+.btn-primary:hover:not(:disabled) {
+  background-color: var(--easy-red-hover);
+  border-color: var(--easy-red-hover);
+}
+
+.btn-secondary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--easy-border);
+  border-radius: 0.5rem;
+  background-color: var(--easy-white);
+  color: var(--easy-text-secondary);
+  padding: 0.75rem 1rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  line-height: 1.25rem;
+  cursor: pointer;
+  transition:
+    background-color 150ms ease,
+    border-color 150ms ease;
+}
+
+.btn-secondary:hover:not(:disabled) {
+  background-color: #f8fafc;
+}
+
+.btn-outline-red {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--easy-red);
+  border-radius: 0.5rem;
+  background-color: var(--easy-white);
+  color: var(--easy-red);
+  padding: 0.75rem 1rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  line-height: 1.25rem;
+  cursor: pointer;
+}
+
+.btn-outline-red:hover:not(:disabled) {
+  background-color: #fef2f2;
+}
+
+.btn-photo {
+  display: inline-flex;
+  width: 100%;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid #000000;
+  border-radius: 0.5rem;
+  background-color: #eff6ff;
+  color: #000000;
+  padding: 0.75rem 1rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.btn-photo:hover:not(:disabled) {
+  background-color: #dbeafe;
+}
+
+.btn-primary:disabled,
+.btn-secondary:disabled,
+.btn-outline-red:disabled,
+.btn-photo:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+/* ---------------------------------------------------------
+   FORMULARE
+   --------------------------------------------------------- */
+
+.form-label {
+  display: block;
+  margin-bottom: 0.5rem;
+  color: #334155;
+  font-size: 0.875rem;
+  font-weight: 500;
+}
+
+.form-input,
+.form-select,
+.form-textarea {
+  width: 100%;
+  border: 1px solid var(--easy-border);
+  border-radius: 0.5rem;
+  background-color: var(--easy-white);
+  color: var(--easy-text);
+  padding: 0.75rem 1rem;
+  font-size: 1rem;
+}
+
+.form-input:focus,
+.form-select:focus,
+.form-textarea:focus {
+  border-color: #94a3b8;
+  outline: 2px solid transparent;
+  outline-offset: 2px;
+}
+
+.form-input:disabled,
+.form-select:disabled,
+.form-textarea:disabled {
+  background-color: var(--easy-disabled);
+  color: #64748b;
+  cursor: not-allowed;
+}
+
+/* ---------------------------------------------------------
+   TEXTE
+   --------------------------------------------------------- */
+
+.text-easy-primary {
+  color: var(--easy-text);
+}
+
+.text-easy-secondary {
+  color: var(--easy-text-secondary);
+}
+
+.text-easy-muted {
+  color: var(--easy-muted);
 }
