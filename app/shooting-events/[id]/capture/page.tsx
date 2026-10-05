@@ -386,15 +386,8 @@ export default function ShootingEventCapturePage() {
     stitchId?: string
   ) {
     const count = program
-      ? program.special_code === "RUETLI" && stitchId
-        ? blocks
-            .filter(
-              (block) => block.event_stitch_id === stitchId
-            )
-            .reduce(
-              (sum, block) => sum + block.shot_count,
-              0
-            )
+      ? program.special_code === "RUETLI"
+        ? 15
         : program.single_shots + program.series_shots
       : 0;
 
@@ -490,6 +483,126 @@ export default function ShootingEventCapturePage() {
     setLoadingShooter(false);
   }
 
+  async function ensureBlocksForEntry(
+    entry: StitchWithRegistration
+  ) {
+    const program = entry.program;
+
+    if (!program) {
+      return;
+    }
+
+    const existingBlocks = blocks.filter(
+      (block) =>
+        block.event_stitch_id ===
+        entry.stitch.id
+    );
+
+    const rowsToInsert: Array<{
+      event_stitch_id: string;
+      block_number: number;
+      block_type: "single" | "series";
+      shot_count: number;
+    }> = [];
+
+    if (program.special_code === "RUETLI") {
+      for (let blockNumber = 1; blockNumber <= 3; blockNumber += 1) {
+        const existingBlock = existingBlocks.find(
+          (block) => block.block_number === blockNumber
+        );
+
+        if (!existingBlock) {
+          rowsToInsert.push({
+            event_stitch_id: entry.stitch.id,
+            block_number: blockNumber,
+            block_type: "series",
+            shot_count: 5,
+          });
+        }
+      }
+    } else if (program.code === "A10-E20") {
+      const firstPass = existingBlocks.find(
+        (block) => block.block_number === 1
+      );
+      const secondPass = existingBlocks.find(
+        (block) => block.block_number === 2
+      );
+
+      if (!firstPass) {
+        rowsToInsert.push({
+          event_stitch_id: entry.stitch.id,
+          block_number: 1,
+          block_type: "single",
+          shot_count: 10,
+        });
+      }
+
+      if (!secondPass) {
+        rowsToInsert.push({
+          event_stitch_id: entry.stitch.id,
+          block_number: 2,
+          block_type: "single",
+          shot_count: 10,
+        });
+      }
+    } else {
+      if (
+        program.single_shots > 0 &&
+        !existingBlocks.some(
+          (block) =>
+            block.block_type === "single"
+        )
+      ) {
+        rowsToInsert.push({
+          event_stitch_id: entry.stitch.id,
+          block_number: 1,
+          block_type: "single",
+          shot_count: program.single_shots,
+        });
+      }
+
+      if (
+        program.series_shots > 0 &&
+        !existingBlocks.some(
+          (block) =>
+            block.block_type === "series"
+        )
+      ) {
+        rowsToInsert.push({
+          event_stitch_id: entry.stitch.id,
+          block_number:
+            program.single_shots > 0 ? 2 : 1,
+          block_type: "series",
+          shot_count: program.series_shots,
+        });
+      }
+    }
+
+    if (rowsToInsert.length === 0) {
+      return;
+    }
+
+    const { data, error } = await supabase
+      .from("shooting_event_stitch_blocks")
+      .insert(rowsToInsert)
+      .select(
+        "id, event_stitch_id, block_number, block_type, shot_count"
+      );
+
+    if (error) {
+      throw new Error(
+        `Schussblöcke konnten nicht automatisch erstellt werden: ${error.message}`
+      );
+    }
+
+    const inserted = (data ?? []) as Block[];
+
+    setBlocks((current) => [
+      ...current,
+      ...inserted,
+    ]);
+  }
+
   async function loadPassResult(
     entry: StitchWithRegistration,
     passNumber: number
@@ -530,15 +643,7 @@ export default function ShootingEventCapturePage() {
 
     const count =
       entry.program.special_code === "RUETLI"
-        ? blocks
-            .filter(
-              (block) =>
-                block.event_stitch_id === entry.stitch.id
-            )
-            .reduce(
-              (sum, block) => sum + block.shot_count,
-              0
-            )
+        ? 15
         : entry.program.single_shots +
           entry.program.series_shots;
 
@@ -565,14 +670,34 @@ export default function ShootingEventCapturePage() {
   }
 
   async function openStitch(entry: StitchWithRegistration) {
-    setActiveStitchId(entry.registrationStitch.id);
+    setActiveStitchId(
+      entry.registrationStitch.id
+    );
+    setMessage("");
 
-    const firstPass =
-      entry.passes.length > 0
-        ? Math.min(...entry.passes.map((pass) => pass.pass_number))
-        : 1;
+    try {
+      await ensureBlocksForEntry(entry);
 
-    await loadPassResult(entry, firstPass);
+      const firstPass =
+        entry.passes.length > 0
+          ? Math.min(
+              ...entry.passes.map(
+                (pass) => pass.pass_number
+              )
+            )
+          : 1;
+
+      await loadPassResult(
+        entry,
+        firstPass
+      );
+    } catch (error) {
+      setMessage(
+        error instanceof Error
+          ? `Fehler: ${error.message}`
+          : "Unbekannter Fehler beim Vorbereiten des Stichs."
+      );
+    }
   }
 
   async function saveGenericResult() {
@@ -621,23 +746,52 @@ export default function ShootingEventCapturePage() {
       return;
     }
 
-    const singleBlock = activeBlocks.find(
+    const singleBlocks = activeBlocks.filter(
       (block) => block.block_type === "single"
     );
 
-    const seriesBlock = activeBlocks.find(
+    const seriesBlocks = activeBlocks.filter(
       (block) => block.block_type === "series"
     );
 
-    if (!isRuetli) {
-      if (activeProgram.single_shots > 0 && !singleBlock) {
-        setMessage("Der Einzelschuss-Block ist nicht konfiguriert.");
-        return;
-      }
+    const singleBlock = singleBlocks[0];
+    const seriesBlock = seriesBlocks[0];
 
-      if (activeProgram.series_shots > 0 && !seriesBlock) {
-        setMessage("Der Serien-Block ist nicht konfiguriert.");
-        return;
+    if (!isRuetli) {
+      if (
+        activeProgram.code === "A10-E20"
+      ) {
+        if (
+          singleBlocks.length !== 2 ||
+          singleBlocks.some(
+            (block) => block.shot_count !== 10
+          )
+        ) {
+          setMessage(
+            "A10-E20 muss aus zwei Einzelpassen mit je 10 Schüssen bestehen."
+          );
+          return;
+        }
+      } else {
+        if (
+          activeProgram.single_shots > 0 &&
+          !singleBlock
+        ) {
+          setMessage(
+            "Der Einzelschuss-Block ist nicht konfiguriert."
+          );
+          return;
+        }
+
+        if (
+          activeProgram.series_shots > 0 &&
+          !seriesBlock
+        ) {
+          setMessage(
+            "Der Serien-Block ist nicht konfiguriert."
+          );
+          return;
+        }
       }
     } else {
       const configuredRuetliShots = activeBlocks.reduce(
@@ -756,14 +910,27 @@ export default function ShootingEventCapturePage() {
           };
         }
 
-        const isSeries =
-          index >= activeProgram.single_shots;
+        let runningStart = 0;
+        let blockId: string | null = null;
+
+        for (const block of activeBlocks) {
+          const runningEnd =
+            runningStart + block.shot_count;
+
+          if (
+            index >= runningStart &&
+            index < runningEnd
+          ) {
+            blockId = block.id;
+            break;
+          }
+
+          runningStart = runningEnd;
+        }
 
         return {
           pass_id: passId,
-          block_id: isSeries
-            ? seriesBlock?.id ?? null
-            : singleBlock?.id ?? null,
+          block_id: blockId,
           shot_number: index + 1,
           score: score as number,
           tie_break_score:
@@ -1162,10 +1329,8 @@ export default function ShootingEventCapturePage() {
                                 }
                               >
                                 <h3 className="font-bold text-slate-900">
-                                  {block.block_type === "series"
-                                    ? `${block.shot_count} Schuss Serie`
-                                    : `${block.shot_count} Einzelschüsse`}{" "}
-                                  · A5
+                                  Block {block.block_number} ·{" "}
+                                  {block.shot_count} Schüsse · A5
                                 </h3>
 
                                 <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-6">
@@ -1260,6 +1425,19 @@ export default function ShootingEventCapturePage() {
                     </div>
                   ) : (
                     <div className="mt-8">
+                      <div className="mb-5 rounded-xl bg-slate-50 p-4 text-sm text-slate-600">
+                        <span className="font-semibold text-slate-900">
+                          {activeProgram.code}
+                        </span>
+                        {" · "}
+                        {activeProgram.single_shots} Einzelschüsse
+                        {activeProgram.series_shots > 0
+                          ? ` + ${activeProgram.series_shots} Serie`
+                          : ""}
+                        {" · "}
+                        {activeProgram.scoring_type}
+                      </div>
+
                       {activeEntry.registrationStitch.registered_passes > 1 && (
                         <div className="mb-6">
                           <label className="form-label">
@@ -1309,33 +1487,95 @@ export default function ShootingEventCapturePage() {
                         </p>
                       ) : (
                         <>
-                          {activeProgram.single_shots > 0 && (
-                            <div>
-                              <h3 className="font-bold text-slate-900">
-                                {activeProgram.single_shots} Einzelschüsse ·{" "}
-                                {activeProgram.scoring_type}
-                              </h3>
+                          {activeProgram.code === "A10-E20" ? (
+                            <div className="space-y-8">
+                              <div>
+                                <h3 className="font-bold text-slate-900">
+                                  Einzelpasse 1 · 10 Schüsse · A10
+                                </h3>
 
-                              <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-5">
-                                {shotValues
-                                  .slice(0, activeProgram.single_shots)
-                                  .map((shot, index) => (
-                                    <input
-                                      key={index}
-                                      type="number"
-                                      min={0}
-                                      max={maxScoreForProgram(activeProgram)}
-                                      step={1}
-                                      value={shot}
-                                      onChange={(event) =>
-                                        updateShot(index, event.target.value)
-                                      }
-                                      className="form-input text-center"
-                                      placeholder={`${index + 1}`}
-                                    />
-                                  ))}
+                                <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-5 lg:grid-cols-10">
+                                  {shotValues
+                                    .slice(0, 10)
+                                    .map((shot, index) => (
+                                      <input
+                                        key={index}
+                                        type="number"
+                                        min={0}
+                                        max={10}
+                                        step={1}
+                                        value={shot}
+                                        onChange={(event) =>
+                                          updateShot(
+                                            index,
+                                            event.target.value
+                                          )
+                                        }
+                                        className="form-input text-center"
+                                        placeholder={`${index + 1}`}
+                                      />
+                                    ))}
+                                </div>
+                              </div>
+
+                              <div>
+                                <h3 className="font-bold text-slate-900">
+                                  Einzelpasse 2 · 10 Schüsse · A10
+                                </h3>
+
+                                <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-5 lg:grid-cols-10">
+                                  {shotValues
+                                    .slice(10, 20)
+                                    .map((shot, index) => (
+                                      <input
+                                        key={index + 10}
+                                        type="number"
+                                        min={0}
+                                        max={10}
+                                        step={1}
+                                        value={shot}
+                                        onChange={(event) =>
+                                          updateShot(
+                                            index + 10,
+                                            event.target.value
+                                          )
+                                        }
+                                        className="form-input text-center"
+                                        placeholder={`${index + 11}`}
+                                      />
+                                    ))}
+                                </div>
                               </div>
                             </div>
+                          ) : (
+                            activeProgram.single_shots > 0 && (
+                              <div>
+                                <h3 className="font-bold text-slate-900">
+                                  {activeProgram.single_shots} Einzelschüsse ·{" "}
+                                  {activeProgram.scoring_type}
+                                </h3>
+
+                                <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-5 lg:grid-cols-10">
+                                  {shotValues
+                                    .slice(0, activeProgram.single_shots)
+                                    .map((shot, index) => (
+                                      <input
+                                        key={index}
+                                        type="number"
+                                        min={0}
+                                        max={maxScoreForProgram(activeProgram)}
+                                        step={1}
+                                        value={shot}
+                                        onChange={(event) =>
+                                          updateShot(index, event.target.value)
+                                        }
+                                        className="form-input text-center"
+                                        placeholder={`${index + 1}`}
+                                      />
+                                    ))}
+                                </div>
+                              </div>
+                            )
                           )}
 
                           {activeProgram.series_shots > 0 && (

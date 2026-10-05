@@ -2,21 +2,27 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
-import { useParams, useRouter } from "next/navigation";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { supabase } from "../../../../lib/supabase";
 
 type Shooter = {
   id: string;
-  master_number: number;
   first_name: string;
   last_name: string;
   birth_year: number | null;
+  club_id: string | null;
+};
+
+type Club = {
+  id: string;
+  name: string;
 };
 
 type Registration = {
   id: string;
   shooter_id: string;
   weapon_id: string | null;
+  start_number: number | null;
 };
 
 type Weapon = {
@@ -32,6 +38,10 @@ type Stitch = {
   scoring_type: string;
   shots_per_pass: number;
   max_passes: number;
+  price_chf: number;
+  additional_pass_price_chf: number;
+  jj_price_chf: number | null;
+  jj_additional_pass_price_chf: number | null;
 };
 
 type RegistrationStitch = {
@@ -41,6 +51,8 @@ type RegistrationStitch = {
   weapon_id_override: string | null;
   status: string;
   registered_passes: number;
+  price_override_chf: number | null;
+  additional_pass_price_override_chf: number | null;
 };
 
 type StitchSelection = {
@@ -49,21 +61,28 @@ type StitchSelection = {
   status: string;
   registeredPasses: number;
   existingPasses: number;
+  priceOverride: number | null;
+  additionalPassPriceOverride: number | null;
 };
 
 export default function ShootingEventRegistrationPage() {
   const params = useParams<{ id: string }>();
   const router = useRouter();
+  const searchParams = useSearchParams();
 
   const eventId = params.id;
+  const requestedRegistrationId =
+    searchParams.get("registrationId") ?? "";
 
   const [eventName, setEventName] = useState("");
+  const [eventYear, setEventYear] = useState<number | null>(null);
 
   const [registrations, setRegistrations] = useState<
     Registration[]
   >([]);
 
   const [shooters, setShooters] = useState<Shooter[]>([]);
+  const [clubs, setClubs] = useState<Club[]>([]);
   const [weapons, setWeapons] = useState<Weapon[]>([]);
   const [stitches, setStitches] = useState<Stitch[]>([]);
 
@@ -79,6 +98,7 @@ export default function ShootingEventRegistrationPage() {
     useState(false);
 
   const [saving, setSaving] = useState(false);
+  const [expandedDetails, setExpandedDetails] = useState<Record<string, boolean>>({});
   const [message, setMessage] = useState("");
 
   useEffect(() => {
@@ -100,7 +120,7 @@ export default function ShootingEventRegistrationPage() {
         error: eventError,
       } = await supabase
         .from("shooting_events")
-        .select("id, name")
+        .select("id, name, event_date")
         .eq("id", eventId)
         .single();
 
@@ -116,13 +136,14 @@ export default function ShootingEventRegistrationPage() {
       }
 
       setEventName(eventData.name);
+      setEventYear(eventData.event_date ? Number(eventData.event_date.slice(0, 4)) : null);
 
       const {
         data: registrationData,
         error: registrationError,
       } = await supabase
         .from("shooting_event_registrations")
-        .select("id, shooter_id, weapon_id")
+        .select("id, shooter_id, weapon_id, start_number")
         .eq("shooting_event_id", eventId);
 
       if (registrationError) {
@@ -157,7 +178,7 @@ export default function ShootingEventRegistrationPage() {
         } = await supabase
           .from("shooters")
           .select(
-            "id, master_number, first_name, last_name, birth_year"
+            "id, first_name, last_name, birth_year, club_id"
           )
           .in("id", shooterIds);
 
@@ -174,6 +195,27 @@ export default function ShootingEventRegistrationPage() {
           (shooterData ?? []) as Shooter[]
         );
       }
+
+      const {
+        data: clubData,
+        error: clubError,
+      } = await supabase
+        .from("clubs")
+        .select("id, name")
+        .order("name");
+
+      if (clubError) {
+        setMessage(
+          `Vereine konnten nicht geladen werden: ${clubError.message}`
+        );
+
+        setLoading(false);
+        return;
+      }
+
+      setClubs(
+        (clubData ?? []) as Club[]
+      );
 
       const {
         data: weaponData,
@@ -210,7 +252,11 @@ export default function ShootingEventRegistrationPage() {
             sort_order,
             scoring_type,
             shots_per_pass,
-            max_passes
+            max_passes,
+            price_chf,
+            additional_pass_price_chf,
+            jj_price_chf,
+            jj_additional_pass_price_chf
           `
         )
         .eq("shooting_event_id", eventId)
@@ -243,15 +289,51 @@ export default function ShootingEventRegistrationPage() {
           status: "registered",
           registeredPasses: 1,
           existingPasses: 0,
+          priceOverride: null,
+          additionalPassPriceOverride: null,
         };
       }
 
       setSelections(initialSelections);
+
+      if (
+        requestedRegistrationId &&
+        loadedRegistrations.some(
+          (registration) =>
+            registration.id === requestedRegistrationId
+        )
+      ) {
+        setRegistrationId(
+          requestedRegistrationId
+        );
+      }
+
       setLoading(false);
     }
 
     loadData();
-  }, [eventId, router]);
+  }, [eventId, router, requestedRegistrationId]);
+
+  useEffect(() => {
+    if (
+      loading ||
+      !requestedRegistrationId ||
+      registrationId !==
+        requestedRegistrationId ||
+      stitches.length === 0
+    ) {
+      return;
+    }
+
+    void loadRegistrationStitches(
+      requestedRegistrationId
+    );
+  }, [
+    loading,
+    requestedRegistrationId,
+    registrationId,
+    stitches,
+  ]);
 
   const shooterById = useMemo(() => {
     return new Map(
@@ -271,22 +353,22 @@ export default function ShootingEventRegistrationPage() {
     );
   }, [weapons]);
 
+  const clubById = useMemo(() => {
+    return new Map(
+      clubs.map((club) => [
+        club.id,
+        club,
+      ])
+    );
+  }, [clubs]);
+
   const sortedRegistrations = useMemo(() => {
-    return [...registrations].sort((a, b) => {
-      const shooterA = shooterById.get(
-        a.shooter_id
-      );
-
-      const shooterB = shooterById.get(
-        b.shooter_id
-      );
-
-      return (
-        (shooterA?.master_number ?? 999999) -
-        (shooterB?.master_number ?? 999999)
-      );
-    });
-  }, [registrations, shooterById]);
+    return [...registrations].sort(
+      (a, b) =>
+        (a.start_number ?? 999999) -
+        (b.start_number ?? 999999)
+    );
+  }, [registrations]);
 
   const selectedRegistration =
     registrations.find(
@@ -308,6 +390,81 @@ export default function ShootingEventRegistrationPage() {
         )
       : undefined;
 
+  const selectedClub =
+    selectedShooter?.club_id
+      ? clubById.get(
+          selectedShooter.club_id
+        )
+      : undefined;
+
+  const selectedCategory = useMemo(() => {
+    if (!selectedShooter?.birth_year || !eventYear) return "–";
+
+    const age = eventYear - selectedShooter.birth_year;
+    if (age >= 10 && age <= 16) return "JJ";
+    if (age >= 17 && age <= 20) return "J";
+    if (age >= 21 && age <= 45) return "E";
+    if (age >= 46 && age <= 59) return "S";
+    if (age >= 60 && age <= 69) return "V";
+    if (age >= 70) return "SV";
+    return "–";
+  }, [selectedShooter, eventYear]);
+
+  function effectivePrice(stitch: Stitch, selection?: StitchSelection) {
+    let basePrice = Number(stitch.price_chf ?? 0);
+    let additionalPassPrice = Number(stitch.additional_pass_price_chf ?? 0);
+    let source = "Standard";
+
+    if (selectedCategory === "JJ") {
+      if (stitch.jj_price_chf !== null && stitch.jj_price_chf !== undefined) {
+        basePrice = Number(stitch.jj_price_chf);
+        source = "JJ";
+      }
+
+      if (
+        stitch.jj_additional_pass_price_chf !== null &&
+        stitch.jj_additional_pass_price_chf !== undefined
+      ) {
+        additionalPassPrice = Number(stitch.jj_additional_pass_price_chf);
+      }
+    }
+
+    if (selection?.priceOverride !== null && selection?.priceOverride !== undefined) {
+      basePrice = Number(selection.priceOverride);
+      source = "Individuell";
+    }
+
+    if (
+      selection?.additionalPassPriceOverride !== null &&
+      selection?.additionalPassPriceOverride !== undefined
+    ) {
+      additionalPassPrice = Number(selection.additionalPassPriceOverride);
+      source = "Individuell";
+    }
+
+    const passes = Math.max(1, selection?.registeredPasses ?? 1);
+    const additionalPasses = Math.max(0, passes - 1);
+    const total = basePrice + additionalPasses * additionalPassPrice;
+
+    return { basePrice, additionalPassPrice, additionalPasses, total, source };
+  }
+
+  const registrationTotal = useMemo(() => {
+    return stitches.reduce((sum, stitch) => {
+      const selection = selections[stitch.id];
+      if (!selection?.selected) return sum;
+      return sum + effectivePrice(stitch, selection).total;
+    }, 0);
+  }, [stitches, selections, selectedCategory]);
+
+  function money(value: number) {
+    return new Intl.NumberFormat("de-CH", {
+      style: "currency",
+      currency: "CHF",
+      minimumFractionDigits: 2,
+    }).format(value);
+  }
+
   async function loadRegistrationStitches(
     selectedRegistrationId: string
   ) {
@@ -324,6 +481,8 @@ export default function ShootingEventRegistrationPage() {
           status: "registered",
           registeredPasses: 1,
           existingPasses: 0,
+          priceOverride: null,
+          additionalPassPriceOverride: null,
         };
       }
 
@@ -348,7 +507,9 @@ export default function ShootingEventRegistrationPage() {
           event_stitch_id,
           weapon_id_override,
           status,
-          registered_passes
+          registered_passes,
+          price_override_chf,
+          additional_pass_price_override_chf
         `
       )
       .eq(
@@ -441,6 +602,16 @@ export default function ShootingEventRegistrationPage() {
           Math.max(1, existingPasses),
 
         existingPasses,
+        priceOverride:
+          existingStitch?.price_override_chf === null ||
+          existingStitch?.price_override_chf === undefined
+            ? null
+            : Number(existingStitch.price_override_chf),
+        additionalPassPriceOverride:
+          existingStitch?.additional_pass_price_override_chf === null ||
+          existingStitch?.additional_pass_price_override_chf === undefined
+            ? null
+            : Number(existingStitch.additional_pass_price_override_chf),
       };
     }
 
@@ -542,6 +713,62 @@ export default function ShootingEventRegistrationPage() {
     });
   }
 
+  function setPriceOverride(
+    stitchId: string,
+    value: string
+  ) {
+    setSelections((current) => {
+      const selection = current[stitchId];
+
+      if (!selection) return current;
+
+      const parsed =
+        value.trim() === ""
+          ? null
+          : Number(value);
+
+      return {
+        ...current,
+        [stitchId]: {
+          ...selection,
+          priceOverride:
+            parsed !== null &&
+            Number.isFinite(parsed)
+              ? parsed
+              : null,
+        },
+      };
+    });
+  }
+
+  function setAdditionalPassPriceOverride(
+    stitchId: string,
+    value: string
+  ) {
+    setSelections((current) => {
+      const selection = current[stitchId];
+
+      if (!selection) return current;
+
+      const parsed =
+        value.trim() === ""
+          ? null
+          : Number(value);
+
+      return {
+        ...current,
+        [stitchId]: {
+          ...selection,
+          additionalPassPriceOverride:
+            parsed !== null &&
+            Number.isFinite(parsed)
+              ? parsed
+              : null,
+        },
+      };
+    });
+  }
+
   async function saveRegistration() {
     if (!registrationId) {
       setMessage(
@@ -567,7 +794,9 @@ export default function ShootingEventRegistrationPage() {
             id,
             event_stitch_id,
             status,
-            registered_passes
+            registered_passes,
+            price_override_chf,
+            additional_pass_price_override_chf
           `
         )
         .eq(
@@ -647,6 +876,19 @@ export default function ShootingEventRegistrationPage() {
             existingRow.status ===
               "started")
         ) {
+          const updateValues: {
+            price_override_chf:
+              number | null;
+            additional_pass_price_override_chf:
+              number | null;
+            registered_passes?: number;
+          } = {
+            price_override_chf:
+              selection.priceOverride,
+            additional_pass_price_override_chf:
+              selection.additionalPassPriceOverride,
+          };
+
           if (
             stitch.code ===
             "NACHDOPPEL"
@@ -657,7 +899,7 @@ export default function ShootingEventRegistrationPage() {
                 selection.existingPasses
               );
 
-            const newRegisteredPasses =
+            updateValues.registered_passes =
               Math.max(
                 minimumPasses,
                 Math.min(
@@ -665,27 +907,24 @@ export default function ShootingEventRegistrationPage() {
                   selection.registeredPasses
                 )
               );
+          }
 
-            const {
-              error: updateError,
-            } = await supabase
-              .from(
-                "shooting_event_registration_stitches"
-              )
-              .update({
-                registered_passes:
-                  newRegisteredPasses,
-              })
-              .eq(
-                "id",
-                existingRow.id
-              );
+          const {
+            error: updateError,
+          } = await supabase
+            .from(
+              "shooting_event_registration_stitches"
+            )
+            .update(updateValues)
+            .eq(
+              "id",
+              existingRow.id
+            );
 
-            if (updateError) {
-              throw new Error(
-                updateError.message
-              );
-            }
+          if (updateError) {
+            throw new Error(
+              updateError.message
+            );
           }
 
           continue;
@@ -732,6 +971,12 @@ export default function ShootingEventRegistrationPage() {
 
               registered_passes:
                 registeredPasses,
+
+              price_override_chf:
+                selection.priceOverride,
+
+              additional_pass_price_override_chf:
+                selection.additionalPassPriceOverride,
 
               status:
                 existingRow?.status ??
@@ -883,9 +1128,7 @@ export default function ShootingEventRegistrationPage() {
                       value={registration.id}
                     >
                       SB{" "}
-                      {
-                        shooter.master_number
-                      }{" "}
+                      {registration.start_number ?? "–"}{" "}
                       · {shooter.last_name}{" "}
                       {shooter.first_name}
                     </option>
@@ -900,9 +1143,7 @@ export default function ShootingEventRegistrationPage() {
               <div className="mt-6 rounded-xl bg-slate-50 p-4">
                 <p className="font-semibold text-slate-900">
                   SB{" "}
-                  {
-                    selectedShooter.master_number
-                  }{" "}
+                  {selectedRegistration?.start_number ?? "–"}{" "}
                   ·{" "}
                   {
                     selectedShooter.first_name
@@ -915,6 +1156,16 @@ export default function ShootingEventRegistrationPage() {
                 <p className="mt-1 text-sm text-slate-600">
                   Jahrgang:{" "}
                   {selectedShooter.birth_year ??
+                    "nicht hinterlegt"}
+                </p>
+
+                <p className="mt-1 text-sm text-slate-600">
+                  Kategorie: {selectedCategory}
+                </p>
+
+                <p className="mt-1 text-sm text-slate-600">
+                  Verein:{" "}
+                  {selectedClub?.name ??
                     "nicht hinterlegt"}
                 </p>
 
@@ -1030,6 +1281,18 @@ export default function ShootingEventRegistrationPage() {
                                         : ""}
                                     </span>
 
+                                    {selected && (() => {
+                                      const price = effectivePrice(stitch, selection);
+                                      return (
+                                        <span className="rounded-full bg-emerald-50 px-2 py-1 text-xs font-semibold text-emerald-700">
+                                          {money(price.total)}
+                                          {price.source !== "Standard"
+                                            ? ` · ${price.source}`
+                                            : ""}
+                                        </span>
+                                      );
+                                    })()}
+
                                     {isCompleted && (
                                       <span className="rounded-full bg-green-100 px-2 py-1 text-xs font-semibold text-green-700">
                                         ✓
@@ -1049,111 +1312,21 @@ export default function ShootingEventRegistrationPage() {
 
                             {selected && (
                               <div className="mt-4 border-t pt-4">
-                                <label className="form-label">
-                                  Sportgerät
-                                  für diesen
-                                  Stich
-                                </label>
-
-                                <select
-                                  value={
-                                    selection
-                                      ?.weaponOverrideId ??
-                                    ""
-                                  }
-                                  disabled={
-                                    locked
-                                  }
-                                  onChange={(
-                                    event
-                                  ) =>
-                                    setWeaponOverride(
-                                      stitch.id,
-                                      event
-                                        .target
-                                        .value
-                                    )
-                                  }
-                                  className="form-select"
-                                >
-                                  <option value="">
-                                    Standardwaffe
-                                    {standardWeapon
-                                      ? ` · ${standardWeapon.name}`
-                                      : ""}
-                                  </option>
-
-                                  {weapons
-                                    .filter(
-                                      (
-                                        weapon
-                                      ) =>
-                                        weapon.id !==
-                                        selectedRegistration
-                                          ?.weapon_id
-                                    )
-                                    .map(
-                                      (
-                                        weapon
-                                      ) => (
-                                        <option
-                                          key={
-                                            weapon.id
-                                          }
-                                          value={
-                                            weapon.id
-                                          }
-                                        >
-                                          {
-                                            weapon.name
-                                          }
-                                        </option>
-                                      )
-                                    )}
-                                </select>
-
-                                {locked &&
-                                  stitch.code !==
-                                    "NACHDOPPEL" && (
-                                    <p className="mt-1 text-xs text-slate-500">
-                                      Nach
-                                      Beginn des
-                                      Stichs
-                                      können
-                                      Anmeldung
-                                      und
-                                      Sportgerät
-                                      nicht mehr
-                                      geändert
-                                      werden.
-                                    </p>
-                                  )}
-
-                                {stitch.code ===
-                                  "NACHDOPPEL" && (
-                                  <div className="mt-4">
+                                {stitch.code === "NACHDOPPEL" && (
+                                  <div className="mb-5">
                                     <label className="form-label">
-                                      Anzahl
-                                      gelöste
-                                      Passen
+                                      Anzahl gelöste Passen
                                     </label>
 
                                     <select
                                       value={
-                                        selection
-                                          ?.registeredPasses ??
+                                        selection?.registeredPasses ??
                                         minimumPasses
                                       }
-                                      onChange={(
-                                        event
-                                      ) =>
+                                      onChange={(event) =>
                                         setRegisteredPasses(
                                           stitch.id,
-                                          Number(
-                                            event
-                                              .target
-                                              .value
-                                          )
+                                          Number(event.target.value)
                                         )
                                       }
                                       className="form-select"
@@ -1165,67 +1338,197 @@ export default function ShootingEventRegistrationPage() {
                                             minimumPasses +
                                             1,
                                         },
-                                        (
-                                          _,
-                                          index
-                                        ) =>
-                                          minimumPasses +
-                                          index
-                                      ).map(
-                                        (
-                                          passes
-                                        ) => (
-                                          <option
-                                            key={
-                                              passes
-                                            }
-                                            value={
-                                              passes
-                                            }
-                                          >
-                                            {
-                                              passes
-                                            }{" "}
-                                            {passes ===
-                                            1
-                                              ? "Passe"
-                                              : "Passen"}
-                                          </option>
-                                        )
-                                      )}
+                                        (_, index) =>
+                                          minimumPasses + index
+                                      ).map((passCount) => (
+                                        <option
+                                          key={passCount}
+                                          value={passCount}
+                                        >
+                                          {passCount}
+                                        </option>
+                                      ))}
                                     </select>
 
-                                    <p className="mt-1 text-xs text-slate-500">
-                                      Bereits
-                                      erfasst:{" "}
-                                      {selection
-                                        ?.existingPasses ??
-                                        0}{" "}
-                                      · maximal{" "}
-                                      {
-                                        stitch.max_passes
-                                      }
-                                    </p>
-
-                                    {locked && (
+                                    {selection?.existingPasses ? (
                                       <p className="mt-1 text-xs text-slate-500">
-                                        Beim
-                                        Nachdoppel
-                                        können
-                                        weitere
-                                        Passen
-                                        nachgelöst
-                                        werden.
-                                        Die Anzahl
-                                        darf aber
-                                        nicht unter
-                                        die bereits
-                                        erfassten
-                                        Passen
-                                        reduziert
-                                        werden.
+                                        Bereits erfasst:{" "}
+                                        {selection.existingPasses} Passe
+                                        {selection.existingPasses === 1
+                                          ? ""
+                                          : "n"}
                                       </p>
-                                    )}
+                                    ) : null}
+                                  </div>
+                                )}
+
+                                <div className="flex flex-wrap items-center justify-between gap-3">
+                                  {(() => {
+                                    const price = effectivePrice(
+                                      stitch,
+                                      selection
+                                    );
+
+                                    return (
+                                      <div className="text-sm text-slate-700">
+                                        <span className="text-slate-500">
+                                          Preis:{" "}
+                                        </span>
+                                        <span className="font-bold text-slate-900">
+                                          {money(price.total)}
+                                        </span>
+                                        {price.source !== "Standard" && (
+                                          <span className="ml-2 text-xs font-semibold text-slate-500">
+                                            {price.source}
+                                          </span>
+                                        )}
+                                      </div>
+                                    );
+                                  })()}
+
+                                  <button
+                                    type="button"
+                                    onClick={() =>
+                                      setExpandedDetails((current) => ({
+                                        ...current,
+                                        [stitch.id]:
+                                          !current[stitch.id],
+                                      }))
+                                    }
+                                    className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+                                  >
+                                    {expandedDetails[stitch.id]
+                                      ? "Zusatzdaten ausblenden ▲"
+                                      : "Zusatzdaten anzeigen ▼"}
+                                  </button>
+                                </div>
+
+                                {expandedDetails[stitch.id] && (
+                                  <div className="mt-5 space-y-5">
+                                    <div className="grid gap-4 rounded-xl border border-slate-200 bg-slate-50 p-4 sm:grid-cols-2">
+                                      <div>
+                                        <label className="form-label">
+                                          Individueller Grundpreis
+                                        </label>
+
+                                        <div className="flex items-center gap-2">
+                                          <span className="text-sm text-slate-500">
+                                            CHF
+                                          </span>
+
+                                          <input
+                                            type="number"
+                                            min="0"
+                                            step="0.01"
+                                            value={
+                                              selection?.priceOverride ??
+                                              ""
+                                            }
+                                            onChange={(event) =>
+                                              setPriceOverride(
+                                                stitch.id,
+                                                event.target.value
+                                              )
+                                            }
+                                            className="form-input"
+                                            placeholder="Automatisch"
+                                          />
+                                        </div>
+
+                                        <p className="mt-1 text-xs text-slate-500">
+                                          Leer = Standard- bzw. JJ-Preis verwenden.
+                                        </p>
+                                      </div>
+
+                                      {stitch.max_passes > 1 && (
+                                        <div>
+                                          <label className="form-label">
+                                            Individueller Zusatzpass
+                                          </label>
+
+                                          <div className="flex items-center gap-2">
+                                            <span className="text-sm text-slate-500">
+                                              CHF
+                                            </span>
+
+                                            <input
+                                              type="number"
+                                              min="0"
+                                              step="0.01"
+                                              value={
+                                                selection?.additionalPassPriceOverride ??
+                                                ""
+                                              }
+                                              onChange={(event) =>
+                                                setAdditionalPassPriceOverride(
+                                                  stitch.id,
+                                                  event.target.value
+                                                )
+                                              }
+                                              className="form-input"
+                                              placeholder="Automatisch"
+                                            />
+                                          </div>
+
+                                          <p className="mt-1 text-xs text-slate-500">
+                                            Leer = konfigurierten Zusatzpasspreis verwenden.
+                                          </p>
+                                        </div>
+                                      )}
+                                    </div>
+
+                                    <div>
+                                      <label className="form-label">
+                                        Sportgerät für diesen Stich
+                                      </label>
+
+                                      <select
+                                        value={
+                                          selection?.weaponOverrideId ??
+                                          ""
+                                        }
+                                        disabled={locked}
+                                        onChange={(event) =>
+                                          setWeaponOverride(
+                                            stitch.id,
+                                            event.target.value
+                                          )
+                                        }
+                                        className="form-select"
+                                      >
+                                        <option value="">
+                                          Standardwaffe
+                                          {standardWeapon
+                                            ? ` · ${standardWeapon.name}`
+                                            : ""}
+                                        </option>
+
+                                        {weapons
+                                          .filter(
+                                            (weapon) =>
+                                              weapon.id !==
+                                              selectedRegistration?.weapon_id
+                                          )
+                                          .map((weapon) => (
+                                            <option
+                                              key={weapon.id}
+                                              value={weapon.id}
+                                            >
+                                              {weapon.name}
+                                            </option>
+                                          ))}
+                                      </select>
+
+                                      {locked &&
+                                        stitch.code !==
+                                          "NACHDOPPEL" && (
+                                          <p className="mt-1 text-xs text-slate-500">
+                                            Nach Beginn des Stichs können
+                                            Anmeldung und Sportgerät nicht mehr
+                                            geändert werden.
+                                          </p>
+                                        )}
+                                    </div>
                                   </div>
                                 )}
                               </div>
@@ -1236,6 +1539,22 @@ export default function ShootingEventRegistrationPage() {
                     )}
                   </div>
                 )}
+              </div>
+
+              <div className="mt-8 rounded-2xl border border-emerald-200 bg-emerald-50 p-5">
+                <div className="flex items-center justify-between gap-4">
+                  <div>
+                    <p className="text-sm font-semibold text-emerald-800">
+                      Einnahmen dieser Anmeldung
+                    </p>
+                    <p className="mt-1 text-xs text-emerald-700">
+                      Summe aller aktuell ausgewählten Stiche und gelösten Passen.
+                    </p>
+                  </div>
+                  <p className="text-2xl font-bold text-emerald-900">
+                    {money(registrationTotal)}
+                  </p>
+                </div>
               </div>
 
               <button
