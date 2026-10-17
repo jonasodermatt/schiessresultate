@@ -168,6 +168,7 @@ export default function ShootingEventGroupsPage() {
         const { data: eventData, error: eventError } = await supabase
           .from("shooting_events")
           .select("id, name, group_ranking_stitch_id")
+          .eq("owner_id", user.id)
           .eq("id", eventId)
           .single();
 
@@ -263,12 +264,18 @@ export default function ShootingEventGroupsPage() {
     setMessage("");
 
     try {
+      const { data: { user }, error: authError } = await supabase.auth.getUser();
+      if (authError || !user) throw new Error("Bitte erneut anmelden.");
+
       const { error } = await supabase
         .from("shooting_events")
         .update({
           group_ranking_stitch_id: stitchId || null,
         })
-        .eq("id", eventId);
+        .eq("owner_id", user.id)
+        .eq("id", eventId)
+        .select("id")
+        .single();
 
       if (error) throw new Error(error.message);
 

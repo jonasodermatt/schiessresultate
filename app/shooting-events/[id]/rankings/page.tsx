@@ -391,6 +391,7 @@ export default function ShootingEventRankingsPage() {
         await supabase
           .from("shooting_events")
           .select("id, name, event_date, group_ranking_stitch_id")
+          .eq("owner_id", user.id)
           .eq("id", eventId)
           .single();
 

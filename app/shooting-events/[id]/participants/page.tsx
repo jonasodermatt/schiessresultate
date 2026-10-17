@@ -13,6 +13,7 @@ type Club = {
 
 type Shooter = {
   id: string;
+  owner_id: string | null;
   first_name: string;
   last_name: string;
   birth_year: number | null;
@@ -41,6 +42,7 @@ export default function ShootingEventParticipantsPage() {
   const router = useRouter();
   const eventId = params.id;
 
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [eventName, setEventName] = useState("");
   const [registrations, setRegistrations] = useState<Registration[]>([]);
   const [allShooters, setAllShooters] = useState<Shooter[]>([]);
@@ -81,7 +83,7 @@ export default function ShootingEventParticipantsPage() {
   async function loadShooters() {
     const { data, error } = await supabase
       .from("shooters")
-      .select("id, first_name, last_name, birth_year, club_id")
+      .select("id, owner_id, first_name, last_name, birth_year, club_id")
       .eq("active", true)
       .order("last_name")
       .order("first_name");
@@ -99,6 +101,7 @@ export default function ShootingEventParticipantsPage() {
         return;
       }
 
+      setCurrentUserId(user.id);
       setLoading(true);
       setMessage("");
 
@@ -108,7 +111,7 @@ export default function ShootingEventParticipantsPage() {
           { data: weaponData, error: weaponError },
           { data: clubData, error: clubError },
         ] = await Promise.all([
-          supabase.from("shooting_events").select("id, name").eq("id", eventId).single(),
+          supabase.from("shooting_events").select("id, name").eq("owner_id", user.id).eq("id", eventId).single(),
           supabase.from("competition_weapons").select("id, name").eq("active", true).order("name"),
           supabase.from("clubs").select("id, name, city").order("name"),
         ]);
@@ -298,7 +301,7 @@ export default function ShootingEventParticipantsPage() {
           birth_year: birthYear ? Number(birthYear) : null,
           club_id: newClubId || null,
         })
-        .select("id, first_name, last_name, birth_year, club_id")
+        .select("id, owner_id, first_name, last_name, birth_year, club_id")
         .single();
 
       if (shooterError || !shooter) {
@@ -340,7 +343,9 @@ export default function ShootingEventParticipantsPage() {
     setEditBirthYear(row.shooter.birth_year !== null ? String(row.shooter.birth_year) : "");
     setEditClubId(row.shooter.club_id ?? "");
     setEditWeaponId(row.registration.weapon_id ?? "");
-    setMessage("");
+    setMessage(row.shooter.owner_id === currentUserId && currentUserId
+      ? ""
+      : "Historische Schützendaten sind schreibgeschützt. Das Sportgerät für diesen Anlass kann geändert werden.");
   }
 
   function cancelEdit() {
@@ -362,22 +367,33 @@ export default function ShootingEventParticipantsPage() {
     setMessage("");
 
     try {
-      const shooterUpdate = await supabase
-        .from("shooters")
-        .update({
-          first_name: editFirstName.trim(),
-          last_name: editLastName.trim(),
-          birth_year: editBirthYear ? Number(editBirthYear) : null,
-          club_id: editClubId || null,
-        })
-        .eq("id", row.shooter.id);
+      const { data: { user }, error: authError } = await supabase.auth.getUser();
+      if (authError || !user) throw new Error("Bitte erneut anmelden.");
 
-      if (shooterUpdate.error) throw new Error(shooterUpdate.error.message);
+      if (row.shooter.owner_id === user.id) {
+        const shooterUpdate = await supabase
+          .from("shooters")
+          .update({
+            first_name: editFirstName.trim(),
+            last_name: editLastName.trim(),
+            birth_year: editBirthYear ? Number(editBirthYear) : null,
+            club_id: editClubId || null,
+          })
+          .eq("id", row.shooter.id)
+          .eq("owner_id", user.id)
+          .select("id")
+          .single();
+
+        if (shooterUpdate.error) throw new Error(shooterUpdate.error.message);
+      }
 
       const registrationUpdate = await supabase
         .from("shooting_event_registrations")
         .update({ weapon_id: editWeaponId || null })
-        .eq("id", row.registration.id);
+        .eq("id", row.registration.id)
+        .eq("shooting_event_id", eventId)
+        .select("id")
+        .single();
 
       if (registrationUpdate.error) throw new Error(registrationUpdate.error.message);
 
@@ -623,13 +639,14 @@ export default function ShootingEventParticipantsPage() {
                 <tbody>
                   {participants.map((row) => {
                     const editing = editingShooterId === row.shooter.id;
+                    const editingIdentity = editing && currentUserId !== null && row.shooter.owner_id === currentUserId;
 
                     return (
                       <tr key={row.registration.id} className="border-b border-slate-100 align-top">
                         <td className="py-3 pr-4 font-semibold">{row.registration.start_number ?? "–"}</td>
 
                         <td className="py-3 pr-4">
-                          {editing ? (
+                          {editingIdentity ? (
                             <div className="grid min-w-72 grid-cols-2 gap-2">
                               <input value={editFirstName} onChange={(e) => setEditFirstName(e.target.value)} className="form-input" />
                               <input value={editLastName} onChange={(e) => setEditLastName(e.target.value)} className="form-input" />
@@ -642,13 +659,13 @@ export default function ShootingEventParticipantsPage() {
                         </td>
 
                         <td className="py-3 pr-4">
-                          {editing ? (
+                          {editingIdentity ? (
                             <input type="number" value={editBirthYear} onChange={(e) => setEditBirthYear(e.target.value)} className="form-input w-28" />
                           ) : row.shooter.birth_year ?? "–"}
                         </td>
 
                         <td className="py-3 pr-4">
-                          {editing ? (
+                          {editingIdentity ? (
                             <select value={editClubId} onChange={(e) => setEditClubId(e.target.value)} className="form-select min-w-56">
                               <option value="">Kein Verein</option>
                               {clubs.map((club) => (

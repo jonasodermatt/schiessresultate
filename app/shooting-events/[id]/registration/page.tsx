@@ -121,6 +121,7 @@ export default function ShootingEventRegistrationPage() {
       } = await supabase
         .from("shooting_events")
         .select("id, name, event_date")
+        .eq("owner_id", user.id)
         .eq("id", eventId)
         .single();
 

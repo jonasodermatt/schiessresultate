@@ -143,9 +143,17 @@ export default function NewShootingEventPage() {
     setSaving(true);
     setMessage("");
 
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    if (authError || !user) {
+      setMessage("Bitte erneut anmelden.");
+      setSaving(false);
+      return;
+    }
+
     const { data, error } = await supabase
       .from("shooting_events")
       .insert({
+        owner_id: user.id,
         club_id: clubId,
         name: name.trim(),
         event_date: eventDate,

@@ -87,6 +87,7 @@ export default function ShootingEventOverviewPage() {
         .select(
           "id, club_id, name, event_date, shooting_range_id, distance_m, notes, status"
         )
+        .eq("owner_id", user.id)
         .eq("id", eventId)
         .single();
 

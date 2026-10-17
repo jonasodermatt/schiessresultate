@@ -141,6 +141,7 @@ export default function ShootingEventCapturePage() {
       const { data: eventData, error: eventError } = await supabase
         .from("shooting_events")
         .select("id, name")
+        .eq("owner_id", user.id)
         .eq("id", eventId)
         .single();
 

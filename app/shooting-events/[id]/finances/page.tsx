@@ -167,9 +167,13 @@ export default function ShootingEventFinancesPage() {
     setMessage("");
 
     try {
+      const { data: { user }, error: authError } = await supabase.auth.getUser();
+      if (authError || !user) throw new Error("Bitte erneut anmelden.");
+
       const { data: eventData, error: eventError } = await supabase
         .from("shooting_events")
         .select("id, name, event_date")
+        .eq("owner_id", user.id)
         .eq("id", eventId)
         .single();
 

@@ -101,6 +101,7 @@ export default function DashboardPage() {
       const { data: eventData, error: eventError } = await supabase
         .from("shooting_events")
         .select("id, name, event_date, status")
+        .eq("owner_id", user.id)
         .order("event_date", { ascending: false });
 
       if (eventError) {
