@@ -54,6 +54,7 @@ type CombinationRankingRow = {
   firstName: string;
   lastName: string;
   birthYear: number | null;
+  clubName: string | null;
   details: {
     stitchId: string;
     stitchName: string;
@@ -62,6 +63,20 @@ type CombinationRankingRow = {
     weighted: number;
   }[];
   total: number;
+};
+
+type SectionConfig = {
+  shooting_event_id: string;
+  source_type: "stitch" | "combination";
+  source_id: string;
+  percentage: number;
+};
+type SectionResult = {
+  clubName: string;
+  participants: number;
+  counted: number;
+  average: number;
+  countedScores: number[];
 };
 
 type RankingRow = {
@@ -348,6 +363,32 @@ function categoryForBirthYear(birthYear: number | null, eventYear: number | null
   return "–";
 }
 
+// Excel-kompatibler CSV-Export (CH: Semikolon, UTF-8 BOM).
+function csvCell(value: string | number | null | undefined): string {
+  const text = String(value ?? "");
+  // Tabellenprogramme dürfen Benutzertexte nicht als Formeln ausführen.
+  const safe = /^[\s]*[=+@\-\t\r]/.test(text) && typeof value === "string"
+    ? `\'${text}`
+    : text;
+  return `"${safe.replace(/"/g, '""')}"`;
+}
+
+function downloadRankingCsv(filename: string, records: (string | number | null | undefined)[][]) {
+  const csv = "\uFEFF" + records.map((record) => record.map(csvCell).join(";")).join("\r\n");
+  const url = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8;" }));
+  const anchor = document.createElement("a");
+  anchor.href = url;
+  anchor.download = filename;
+  document.body.appendChild(anchor);
+  anchor.click();
+  anchor.remove();
+  URL.revokeObjectURL(url);
+}
+
+function safeFilenamePart(value: string) {
+  return value.normalize("NFKD").replace(/[^a-zA-Z0-9_-]+/g, "_").replace(/^_+|_+$/g, "").slice(0, 90) || "Rangliste";
+}
+
 export default function ShootingEventRankingsPage() {
   const params = useParams<{ id: string }>();
   const router = useRouter();
@@ -356,13 +397,15 @@ export default function ShootingEventRankingsPage() {
 
   const [eventName, setEventName] = useState("");
   const [eventYear, setEventYear] = useState<number | null>(null);
+  const [clubNamesByRegistration, setClubNamesByRegistration] = useState<Record<string, string>>({});
+  const [showClubs, setShowClubs] = useState(false);
   const [stitches, setStitches] = useState<Stitch[]>([]);
   const [selectedStitchId, setSelectedStitchId] = useState("");
   const [rows, setRows] = useState<RankingRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadingRanking, setLoadingRanking] = useState(false);
   const [message, setMessage] = useState("");
-  const [viewMode, setViewMode] = useState<"individual" | "groups" | "combinations">("individual");
+  const [viewMode, setViewMode] = useState<"individual" | "groups" | "combinations" | "sections">("individual");
   const [groups, setGroups] = useState<EventGroup[]>([]);
   const [groupMembers, setGroupMembers] = useState<EventGroupMember[]>([]);
   const [groupRows, setGroupRows] = useState<RankingRow[]>([]);
@@ -373,6 +416,15 @@ export default function ShootingEventRankingsPage() {
   const [selectedCombinationId, setSelectedCombinationId] = useState("");
   const [combinationRows, setCombinationRows] = useState<RankingRow[]>([]);
   const [loadingCombination, setLoadingCombination] = useState(false);
+  const [sectionConfig, setSectionConfig] = useState<SectionConfig | null>(null);
+  const [sectionSourceType, setSectionSourceType] = useState<"stitch" | "combination">("stitch");
+  const [sectionSourceId, setSectionSourceId] = useState("");
+  const [sectionPercentage, setSectionPercentage] = useState(50);
+  const [sectionRows, setSectionRows] = useState<RankingRow[]>([]);
+  const [sectionCombinationStitches, setSectionCombinationStitches] = useState<CombinationStitch[]>([]);
+  const [sectionLoading, setSectionLoading] = useState(false);
+  const [sectionSaving, setSectionSaving] = useState(false);
+  const [sectionMessage, setSectionMessage] = useState("");
 
   useEffect(() => {
     async function loadData() {
@@ -467,6 +519,104 @@ export default function ShootingEventRankingsPage() {
 
     loadData();
   }, [eventId, router]);
+
+  // Sektionskonfiguration des Anlasses laden.
+  useEffect(() => {
+    let active = true;
+    async function loadConfig() {
+      const { data, error } = await supabase.from("shooting_event_section_settings")
+        .select("shooting_event_id, source_type, source_id, percentage")
+        .eq("shooting_event_id", eventId).maybeSingle();
+      if (!active) return;
+      if (error) { setSectionMessage(`Sektionskonfiguration: ${error.message}`); return; }
+      if (data) {
+        const config = data as SectionConfig;
+        setSectionConfig(config);
+        setSectionSourceType(config.source_type);
+        setSectionSourceId(config.source_id);
+        setSectionPercentage(Number(config.percentage));
+      }
+    }
+    void loadConfig();
+    return () => { active = false; };
+  }, [eventId]);
+
+  // Vereinsanzeige für den gesamten Anlass anhand abgeschlossener Resultate bestimmen.
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadEventClubs() {
+      setShowClubs(false);
+      setClubNamesByRegistration({});
+
+      const { data: completed, error: rankingError } = await supabase
+        .from("shooting_event_ranking_base")
+        .select("registration_id")
+        .eq("shooting_event_id", eventId)
+        .eq("status", "completed");
+
+      if (rankingError || cancelled) return;
+
+      const registrationIds = Array.from(
+        new Set((completed ?? []).map((item) => item.registration_id as string))
+      );
+      if (registrationIds.length === 0) return;
+
+      // Vereinszugehörigkeit gehört zum Schützen, nicht zur Anlassanmeldung.
+      const registrations: { id: string; shooter_id: string }[] = [];
+      for (let i = 0; i < registrationIds.length; i += 200) {
+        const { data, error } = await supabase
+          .from("shooting_event_registrations")
+          .select("id, shooter_id")
+          .eq("shooting_event_id", eventId)
+          .in("id", registrationIds.slice(i, i + 200));
+        if (error || cancelled) return;
+        registrations.push(...(data ?? []));
+      }
+
+      const shooterIds = Array.from(new Set(registrations.map((r) => r.shooter_id)));
+      const shooters: { id: string; club_id: string | null }[] = [];
+      for (let i = 0; i < shooterIds.length; i += 200) {
+        const { data, error } = await supabase
+          .from("shooters")
+          .select("id, club_id")
+          .in("id", shooterIds.slice(i, i + 200));
+        if (error || cancelled) return;
+        shooters.push(...(data ?? []));
+      }
+
+      const clubByShooterId = new Map(shooters.map((shooter) => [shooter.id, shooter.club_id]));
+      const clubIds = Array.from(new Set(
+        shooters.map((shooter) => shooter.club_id).filter((id): id is string => Boolean(id))
+      ));
+      if (clubIds.length === 0) return;
+
+      const clubs: { id: string; name: string }[] = [];
+      for (let i = 0; i < clubIds.length; i += 200) {
+        const { data, error } = await supabase
+          .from("clubs")
+          .select("id, name")
+          .in("id", clubIds.slice(i, i + 200));
+        if (error || cancelled) return;
+        clubs.push(...(data ?? []));
+      }
+
+      const namesById = new Map(clubs.map((club) => [club.id, club.name]));
+      const namesByRegistration: Record<string, string> = {};
+      for (const registration of registrations) {
+        const clubId = clubByShooterId.get(registration.shooter_id);
+        const name = clubId ? namesById.get(clubId) : null;
+        if (name?.trim()) namesByRegistration[registration.id] = name.trim();
+      }
+      if (!cancelled) {
+        setClubNamesByRegistration(namesByRegistration);
+        setShowClubs(new Set(Object.values(namesByRegistration)).size > 1);
+      }
+    }
+
+    void loadEventClubs();
+    return () => { cancelled = true; };
+  }, [eventId]);
 
   useEffect(() => {
     async function loadRanking() {
@@ -689,6 +839,98 @@ export default function ShootingEventRankingsPage() {
     void loadGroupRanking();
   }, [eventId, stitches, viewMode, groupRankingStitchId]);
 
+  // Resultate für die Sektionswertung laden, unabhängig vom sichtbaren Einzelstich.
+  useEffect(() => {
+    if (viewMode !== "sections" || !sectionConfig) return;
+    let active = true;
+    async function loadSection() {
+      setSectionLoading(true);
+      setSectionMessage("");
+      let ids = [sectionConfig!.source_id];
+      let configured: CombinationStitch[] = [];
+      if (sectionConfig!.source_type === "combination") {
+        const response = await supabase.from("shooting_event_combination_stitches")
+          .select("id, combination_id, event_stitch_id, weight_percent, sort_order")
+          .eq("combination_id", sectionConfig!.source_id).order("sort_order");
+        if (response.error) {
+          if (active) setSectionMessage(response.error.message);
+          if (active) setSectionLoading(false);
+          return;
+        }
+        configured = (response.data ?? []) as CombinationStitch[];
+        ids = configured.map(x => x.event_stitch_id);
+      }
+      if (!ids.length) {
+        if (active) { setSectionRows([]); setSectionCombinationStitches(configured); setSectionLoading(false); }
+        return;
+      }
+      const response = await supabase.from("shooting_event_ranking_base").select("*")
+        .eq("shooting_event_id", eventId).eq("status", "completed")
+        .in("event_stitch_id", ids);
+      if (active) {
+        if (response.error) setSectionMessage(response.error.message);
+        setSectionRows(((response.data ?? []) as RankingRow[]).map(x => ({...x, ranked_shots: x.ranked_shots ?? []})));
+        setSectionCombinationStitches(configured);
+        setSectionLoading(false);
+      }
+    }
+    void loadSection();
+    return () => { active = false; };
+  }, [eventId, viewMode, sectionConfig]);
+
+  const sectionRanking = useMemo<SectionResult[]>(() => {
+    if (!sectionConfig) return [];
+    const byRegistration = new Map<string, RankingRow[]>();
+    for (const row of sectionRows) {
+      const current = byRegistration.get(row.registration_id) ?? [];
+      current.push(row);
+      byRegistration.set(row.registration_id, current);
+    }
+    const byClub = new Map<string, number[]>();
+    for (const [registrationId, resultRows] of byRegistration) {
+      const clubName = clubNamesByRegistration[registrationId];
+      if (!clubName) continue;
+      let score: number;
+      if (sectionConfig.source_type === "stitch") {
+        const match = resultRows.find(x => x.event_stitch_id === sectionConfig.source_id);
+        if (!match) continue;
+        score = rankingTotal(match);
+      } else {
+        if (!sectionCombinationStitches.length) continue;
+        const resultByStitch = new Map(resultRows.map(x => [x.event_stitch_id, x]));
+        if (sectionCombinationStitches.some(x => !resultByStitch.has(x.event_stitch_id))) continue;
+        score = sectionCombinationStitches.reduce((sum, x) =>
+          sum + rankingTotal(resultByStitch.get(x.event_stitch_id)!) * Number(x.weight_percent) / 100, 0);
+      }
+      const scores = byClub.get(clubName) ?? [];
+      scores.push(score);
+      byClub.set(clubName, scores);
+    }
+    return [...byClub].map(([clubName, scores]) => {
+      scores.sort((a,b) => b-a);
+      const counted = Math.ceil(scores.length * Number(sectionConfig.percentage) / 100);
+      const countedScores = scores.slice(0, counted);
+      return {clubName, participants: scores.length, counted, countedScores,
+        average: countedScores.reduce((a,b) => a+b,0) / counted};
+    }).sort((a,b) => b.average-a.average || a.clubName.localeCompare(b.clubName,"de-CH"));
+  }, [sectionConfig, sectionRows, sectionCombinationStitches, clubNamesByRegistration]);
+
+  async function saveSectionConfig() {
+    setSectionMessage("");
+    if (!sectionSourceId || !Number.isFinite(sectionPercentage) || sectionPercentage <= 0 || sectionPercentage > 100) {
+      setSectionMessage("Bitte eine Wertung und einen Prozentwert zwischen 1 und 100 wählen.");
+      return;
+    }
+    setSectionSaving(true);
+    const config: SectionConfig = {shooting_event_id: eventId, source_type: sectionSourceType,
+      source_id: sectionSourceId, percentage: sectionPercentage};
+    const {error} = await supabase.from("shooting_event_section_settings")
+      .upsert(config, {onConflict:"shooting_event_id"});
+    if (error) setSectionMessage(`Speichern fehlgeschlagen: ${error.message}`);
+    else { setSectionConfig({...config}); setSectionMessage("Sektionswertung gespeichert."); }
+    setSectionSaving(false);
+  }
+
   const rankedRows = useMemo(() => {
     return [...rows].sort(
       compareRankingRows
@@ -862,6 +1104,7 @@ export default function ShootingEventRankingsPage() {
         firstName: firstRow.first_name,
         lastName: firstRow.last_name,
         birthYear: firstRow.birth_year,
+        clubName: clubNamesByRegistration[registrationId] ?? null,
         details,
         total: details.reduce(
           (sum, detail) =>
@@ -953,6 +1196,7 @@ export default function ShootingEventRankingsPage() {
     combinationRows,
     stitches,
     selectedCombination,
+    clubNamesByRegistration,
   ]);
 
   const selectedStitch = stitches.find(
@@ -966,6 +1210,72 @@ export default function ShootingEventRankingsPage() {
           stitch.id === groupRankingStitchId
       )
     : undefined;
+
+  function handleCsvDownload() {
+    const name = viewMode === "sections"
+      ? "Sektionen"
+      : viewMode === "groups"
+      ? `Gruppen_${groupRankingStitch?.name ?? "Rangliste"}`
+      : viewMode === "combinations"
+        ? `Kombination_${selectedCombination?.name ?? "Rangliste"}`
+        : `Stich_${selectedStitch?.name ?? "Rangliste"}`;
+    const filename = `${safeFilenamePart(eventName)}_${safeFilenamePart(name)}.csv`;
+    let records: (string | number | null | undefined)[][];
+
+    if (viewMode === "sections") {
+      records = [["Rang", "Verein", "Teilnehmer", "Zählende", "Sektionsresultat", "Zählende Einzelresultate"]];
+      sectionRanking.forEach((entry, index) => records.push([index + 1, entry.clubName,
+        entry.participants, entry.counted, entry.average.toFixed(3).replace(".", ","),
+        entry.countedScores.map(x => x.toFixed(2).replace(".", ",")).join(" / ")]));
+    } else if (viewMode === "groups") {
+      records = [["Rang", "Gruppe", "Schütze", ...(showClubs ? ["Verein"] : []), "Einzelresultat", "Gruppentotal"]];
+      groupRanking.forEach((entry, index) => {
+        entry.members.forEach((member) => {
+          records.push([
+            index + 1,
+            entry.group.name,
+            `${member.last_name} ${member.first_name}`,
+            ...(showClubs ? [clubNamesByRegistration[member.registration_id] ?? ""] : []),
+            member.total_score,
+            entry.total,
+          ]);
+        });
+      });
+    } else if (viewMode === "combinations") {
+      const orderedStitches = [...combinationStitches].sort((a, b) => a.sort_order - b.sort_order);
+      records = [[
+        "Rang", "Schütze", ...(showClubs ? ["Verein"] : []), "Jg.", "Kategorie",
+        ...orderedStitches.map((configured) => stitches.find((stitch) => stitch.id === configured.event_stitch_id)?.name ?? "Stich"),
+        "Total",
+      ]];
+      combinationRanking.forEach((entry, index) => {
+        records.push([
+          index + 1,
+          `${entry.lastName} ${entry.firstName}`,
+          ...(showClubs ? [entry.clubName ?? ""] : []),
+          entry.birthYear ?? "",
+          categoryForBirthYear(entry.birthYear, eventYear),
+          ...orderedStitches.map((configured) => entry.details.find((detail) => detail.stitchId === configured.event_stitch_id)?.result ?? ""),
+          entry.total.toFixed(2).replace(".", ","),
+        ]);
+      });
+    } else {
+      records = [["Rang", "Schütze", ...(showClubs ? ["Verein"] : []), "Jg.", "Kategorie", "Sportgerät", "Resultat", "Rangierungsdetails"]];
+      rankedRows.forEach((row, index) => {
+        records.push([
+          index + 1,
+          `${row.last_name} ${row.first_name}`,
+          ...(showClubs ? [clubNamesByRegistration[row.registration_id] ?? ""] : []),
+          row.birth_year ?? "",
+          categoryForBirthYear(row.birth_year, eventYear),
+          row.weapon_name ?? "",
+          resultText(row),
+          detailText(row),
+        ]);
+      });
+    }
+    downloadRankingCsv(filename, records);
+  }
 
   if (loading) {
     return (
@@ -1052,13 +1362,23 @@ export default function ShootingEventRankingsPage() {
             </p>
           </div>
 
-          <button
-            type="button"
-            onClick={() => window.print()}
-            className="rounded-lg border border-slate-300 bg-white px-4 py-3 font-semibold text-slate-900 hover:bg-slate-50"
-          >
-            Rangliste drucken
-          </button>
+          <div className="flex flex-wrap gap-2">
+            <button
+              type="button"
+              onClick={handleCsvDownload}
+              disabled={loadingRanking || loadingGroups || loadingCombination || sectionLoading || (viewMode === "individual" ? rankedRows.length === 0 : viewMode === "groups" ? groupRanking.length === 0 : viewMode === "sections" ? sectionRanking.length === 0 : combinationRanking.length === 0)}
+              className="rounded-lg border border-slate-300 bg-white px-4 py-3 font-semibold text-slate-900 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              CSV herunterladen
+            </button>
+            <button
+              type="button"
+              onClick={() => window.print()}
+              className="rounded-lg border border-slate-300 bg-white px-4 py-3 font-semibold text-slate-900 hover:bg-slate-50"
+            >
+              Rangliste drucken
+            </button>
+          </div>
         </div>
 
         <section className="no-print mt-8 rounded-2xl border bg-white p-6 shadow-sm">
@@ -1096,8 +1416,40 @@ export default function ShootingEventRankingsPage() {
             >
               Kombinationen
             </button>
+            <button type="button" onClick={() => setViewMode("sections")}
+              className={`rounded-lg px-4 py-2 font-semibold ${viewMode === "sections" ? "bg-slate-900 text-white" : "border bg-white text-slate-700"}`}>
+              Sektionen
+            </button>
           </div>
 
+          {viewMode === "sections" && (
+            <div className="mt-5 grid gap-3 sm:grid-cols-4">
+              <label className="text-sm">Wertung
+                <select className="form-select mt-1" value={sectionSourceType}
+                  onChange={e => {setSectionSourceType(e.target.value as "stitch" | "combination"); setSectionSourceId("");}}>
+                  <option value="stitch">Einzelstich</option><option value="combination">Kombination</option>
+                </select>
+              </label>
+              <label className="text-sm sm:col-span-2">Stich / Kombination
+                <select className="form-select mt-1" value={sectionSourceId} onChange={e => setSectionSourceId(e.target.value)}>
+                  <option value="">Bitte auswählen</option>
+                  {(sectionSourceType === "stitch" ? stitches : combinations).map(x =>
+                    <option key={x.id} value={x.id}>{x.name}</option>)}
+                </select>
+              </label>
+              <label className="text-sm">Zählende Schützen (%)
+                <input className="form-input mt-1 w-full" type="number" min={1} max={100} step={1}
+                  value={sectionPercentage} onChange={e => setSectionPercentage(Number(e.target.value))}/>
+              </label>
+              <div className="sm:col-span-4">
+                <button type="button" onClick={saveSectionConfig} disabled={sectionSaving}
+                  className="rounded-lg bg-slate-900 px-4 py-2 font-semibold text-white disabled:opacity-50">
+                  {sectionSaving ? "Speichern..." : "Sektionswertung speichern"}
+                </button>
+                {sectionMessage && <p className="mt-2 text-sm text-slate-600">{sectionMessage}</p>}
+              </div>
+            </div>
+          )}
           {viewMode === "individual" && (
             <div className="mt-5">
               <label className="form-label">Stich</label>
@@ -1156,13 +1508,46 @@ export default function ShootingEventRankingsPage() {
           </h1>
 
           <p className="mt-1 text-lg font-semibold text-slate-700">
-            {viewMode === "groups"
+            {viewMode === "sections"
+              ? "Sektionsrangliste"
+              : viewMode === "groups"
               ? `Gruppenrangliste · ${groupRankingStitch?.name ?? "nicht konfiguriert"}`
               : viewMode === "combinations"
                 ? `Rangliste · ${selectedCombination?.name ?? "Kombination"}`
                 : `Rangliste · ${selectedStitch?.name ?? ""}`}
           </p>
         </div>
+
+        {viewMode === "sections" && (
+          <section className="ranking-card mt-8 rounded-2xl border bg-white p-6 shadow-sm print:mt-0">
+            <h2 className="no-print text-xl font-bold text-slate-900">Sektionsrangliste</h2>
+            {sectionConfig && <p className="no-print mt-1 text-sm text-slate-500">
+              {sectionConfig.source_type === "stitch" ? stitches.find(x => x.id === sectionConfig.source_id)?.name : combinations.find(x => x.id === sectionConfig.source_id)?.name}
+              {" · "}{sectionConfig.percentage}% der Schützen, aufgerundet · Durchschnitt der besten Resultate
+            </p>}
+            {!sectionConfig ? <p className="mt-5 text-slate-500">Bitte oben die Sektionswertung konfigurieren und speichern.</p>
+              : sectionLoading ? <p className="mt-5 text-slate-500">Sektionsrangliste wird geladen...</p>
+              : sectionRanking.length === 0 ? <p className="mt-5 text-slate-500">Noch keine vollständigen Vereinsresultate vorhanden.</p>
+              : <div className="mt-5 overflow-x-auto print:overflow-visible">
+                  <table className="ranking-table w-full border-collapse text-left text-sm">
+                    <thead><tr className="border-b-2 border-slate-300 text-slate-600">
+                      <th className="py-2 pr-3">Rang</th><th className="py-2 pr-3">Verein</th>
+                      <th className="py-2 pr-3 text-right">Teilnehmer</th>
+                      <th className="py-2 pr-3 text-right">Pflicht</th>
+                      <th className="py-2 text-right">Durchschnitt</th>
+                    </tr></thead>
+                    <tbody>{sectionRanking.map((entry,index) =>
+                      <tr key={entry.clubName} className="border-b border-slate-200">
+                        <td className="py-2 pr-3 font-bold">{index+1}</td>
+                        <td className="py-2 pr-3">{entry.clubName}</td>
+                        <td className="py-2 pr-3 text-right">{entry.participants}</td>
+                        <td className="py-2 pr-3 text-right">{entry.counted}</td>
+                        <td className="py-2 text-right font-bold">{entry.average.toFixed(3)}</td>
+                      </tr>)}</tbody>
+                  </table>
+                </div>}
+          </section>
+        )}
 
         {viewMode === "groups" && (
           <section className="ranking-card mt-8 rounded-2xl border bg-white p-6 shadow-sm print:mt-0">
@@ -1206,6 +1591,9 @@ export default function ShootingEventRankingsPage() {
                               >
                                 <span>
                                   {member.last_name} {member.first_name}
+                                  {showClubs && clubNamesByRegistration[member.registration_id] && (
+                                    <span className="text-slate-500">, {clubNamesByRegistration[member.registration_id]}</span>
+                                  )}
                                 </span>
                                 <span className="font-semibold tabular-nums">
                                   {member.total_score}
@@ -1325,6 +1713,9 @@ export default function ShootingEventRankingsPage() {
                           <td className="py-2 pr-3 font-medium">
                             {entry.lastName}{" "}
                             {entry.firstName}
+                            {showClubs && entry.clubName && (
+                              <span className="text-slate-500">, {entry.clubName}</span>
+                            )}
                           </td>
 
                           <td className="py-2 pr-3">
@@ -1430,6 +1821,9 @@ export default function ShootingEventRankingsPage() {
                       <td className="py-2 pr-3 font-medium">
                         {row.last_name}{" "}
                         {row.first_name}
+                        {showClubs && clubNamesByRegistration[row.registration_id] && (
+                          <span className="text-slate-500">, {clubNamesByRegistration[row.registration_id]}</span>
+                        )}
                       </td>
 
                       <td className="py-2 pr-3">
